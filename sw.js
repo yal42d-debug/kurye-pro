@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kurye-pro-v40-clean-slate';
+const CACHE_NAME = 'kurye-pro-v41-clean-slate';
 const urlsToCache = [
   './',
   './index.html'
