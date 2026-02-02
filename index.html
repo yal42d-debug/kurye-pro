@@ -4116,16 +4116,17 @@
                 // And check immediately on load
                 checkForUpdates();
 
-                // Standard SW Registration (Fallback)
-                const swUrl = 'sw.js?v=' + new Date().getTime();
+                // Standard SW Registration
+                // Use CURRENT_APP_VERSION for cache busting, so it only updates when we want it to.
+                const swUrl = 'sw.js?v=' + CURRENT_APP_VERSION;
+
                 navigator.serviceWorker.register(swUrl).then(registration => {
+                    // Check for updates manually
                     registration.update();
                 }).catch(err => console.log('SW Fail:', err));
 
-                // Force page reload if controller changes (new SW takes over)
-                navigator.serviceWorker.addEventListener('controllerchange', () => {
-                    window.location.reload();
-                });
+                // Removing aggressive cleaning listeners to prevent loops
+                // The checkForUpdates() function handles the versioning logic securely.
             });
         }
     </script>
