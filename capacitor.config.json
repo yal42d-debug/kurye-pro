@@ -2,5 +2,9 @@
   "appId": "com.kurye.pro",
   "appName": "KuryePro",
   "webDir": "www",
-  "bundledWebRuntime": false
+  "bundledWebRuntime": false,
+  "server": {
+    "url": "https://yal42d-debug.github.io/kurye_pro/",
+    "cleartext": true
+  }
 }
