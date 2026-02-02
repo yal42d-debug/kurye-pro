@@ -4085,34 +4085,59 @@
 
                 setTimeout(() => msg.remove(), 4000);
 
-                // Force SW update check
-                const swUrl = 'sw.js?v=' + new Date().getTime(); // Anti-cache for SW file itself
+                // --- FORCE UPDATE MECHANISM (YAL42D PRO) ---
+                const CURRENT_APP_VERSION = 37; // Bu sayıyı her güncellemede artırın ve version.txt ile eşleştiğinden emin olun.
 
-                navigator.serviceWorker.register(swUrl).then(function (registration) {
-                    console.log('ServiceWorker registration successful');
+                async function checkForUpdates() {
+                    try {
+                        const response = await fetch('version.txt?t=' + new Date().getTime());
+                        if (!response.ok) return;
 
-                    // Manually check for updates immediately
-                    registration.update();
+                        const text = await response.text();
+                        const remoteVersion = parseInt(text.trim());
 
-                    // Detect when a new SW is installing
-                    registration.onupdatefound = () => {
-                        const installingWorker = registration.installing;
-                        installingWorker.onstatechange = () => {
-                            if (installingWorker.state === 'installed') {
-                                if (navigator.serviceWorker.controller) {
-                                    // New update available!
-                                    console.log('New content is available; please refresh.');
-                                    // Optionally auto-reload or show a specific "Tape to Reload" button
-                                    // window.location.reload(); 
-                                } else {
-                                    console.log('Content is cached for offline use.');
+                        const localVersion = parseInt(localStorage.getItem('app_version') || '0');
+
+                        console.log(`Local: ${localVersion}, Remote: ${remoteVersion}`);
+
+                        if (remoteVersion > localVersion && remoteVersion > 0) {
+                            console.log('New version detected! Wiping caches and reloading...');
+
+                            // 1. Update Local Version
+                            localStorage.setItem('app_version', remoteVersion);
+
+                            // 2. Unregister ALL Service Workers
+                            if ('serviceWorker' in navigator) {
+                                const registrations = await navigator.serviceWorker.getRegistrations();
+                                for (const registration of registrations) {
+                                    await registration.unregister();
                                 }
                             }
-                        };
-                    };
-                }, function (err) {
-                    console.log('ServiceWorker registration failed: ', err);
-                });
+
+                            // 3. Delete ALL Caches
+                            if ('caches' in window) {
+                                const keys = await caches.keys();
+                                await Promise.all(keys.map(key => caches.delete(key)));
+                            }
+
+                            // 4. Force Reload from Server (ignoring browser cache)
+                            window.location.reload(true);
+                        }
+                    } catch (e) {
+                        console.log('Update check failed:', e);
+                    }
+                }
+
+                // Check specifically when online
+                window.addEventListener('online', checkForUpdates);
+                // And check immediately on load
+                checkForUpdates();
+
+                // Standard SW Registration (Fallback)
+                const swUrl = 'sw.js?v=' + new Date().getTime();
+                navigator.serviceWorker.register(swUrl).then(registration => {
+                    registration.update();
+                }).catch(err => console.log('SW Fail:', err));
 
                 // Force page reload if controller changes (new SW takes over)
                 navigator.serviceWorker.addEventListener('controllerchange', () => {
