@@ -4068,30 +4068,8 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () {
-                // UPDATE TEST: Show notification "kırmızı araba"
-                const msg = document.createElement('div');
-                msg.innerHTML = `
-                    <div style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); 
-                                background: rgba(255, 255, 255, 0.95); color: #1e293b; padding: 16px 32px; 
-                                border-radius: 99px; border: 1px solid #e2e8f0; z-index: 10000; 
-                                font-family: 'Inter', sans-serif;
-                                display: flex; align-items: center; gap: 12px;
-                                box-shadow: 0 10px 25px rgba(0,0,0,0.1); animation: slideDown 0.5s ease-out;">
-                        <i class="fas fa-car-side" style="font-size: 1.5rem; color: #ef4444;"></i>
-                        <h2 style="margin: 0; font-size: 1.25rem; font-weight: 700; letter-spacing: 0.5px;">kırmızı araba</h2>
-                    </div>
-                `;
-                document.body.appendChild(msg);
-
-                setTimeout(() => {
-                    msg.style.transition = 'opacity 0.5s ease-out, transform 0.5s ease-out';
-                    msg.style.opacity = '0';
-                    msg.style.transform = 'translate(-50%, -20px)';
-                    setTimeout(() => msg.remove(), 500);
-                }, 4000);
-
                 // --- FORCE UPDATE MECHANISM (YAL42D PRO) ---
-                const CURRENT_APP_VERSION = 43; // Bu sayıyı her güncellemede artırın ve version.txt ile eşleştiğinden emin olun.
+                const CURRENT_APP_VERSION = 44; // Bu sayıyı her güncellemede artırın ve version.txt ile eşleştiğinden emin olun.
 
                 async function checkForUpdates() {
                     try {
