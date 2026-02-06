@@ -2024,26 +2024,12 @@ function openExternalMap() {
 async function ensureAddressData() {
     if (addressData && Object.keys(addressData).length > 0) return true;
 
-    const LIMIT_Duration = 10 * 60 * 1000;
-    const LIMIT_Count = 3;
-    let history = JSON.parse(localStorage.getItem('security_usage_log') || '[]');
-    const now = Date.now();
-    history = history.filter(h => (now - h) < LIMIT_Duration);
-
-    if (history.length >= LIMIT_Count) {
-        alert("⚠️ KOTA DOLDU: 10 dakika içinde en fazla 3 kez sorgu yapabilirsiniz.");
-        return false;
-    }
-
     try {
         const statusEl = document.getElementById('updateStatus');
-        if (statusEl) { statusEl.innerText = "Yönetici onayı kontrol ediliyor..."; statusEl.style.display = 'block'; }
+        if (statusEl) { statusEl.innerText = "Güvenli bağlantı kuruluyor..."; statusEl.style.display = 'block'; }
 
         addressData = await fetchSecureData();
         console.log("🔓 Veri Erişim İzni Onaylandı.");
-
-        history.push(now);
-        localStorage.setItem('security_usage_log', JSON.stringify(history));
 
         if (statusEl) statusEl.style.display = 'none';
         return true;
@@ -2051,8 +2037,10 @@ async function ensureAddressData() {
     } catch (err) {
         console.error('Erişim Hatası:', err);
         const deviceId = getDeviceId();
-        alert(`⛔ ERİŞİM ENGELLENDİ\n\nSebep: ${err.message}\n\nCihaz Kimliğiniz (Admin'e iletin):\n${deviceId}`);
-        if (typeof statusEl !== 'undefined' && statusEl) statusEl.style.display = 'none';
+        alert(`⛔ ERİŞİM ENGELLENDİ\n\nSebep: ${err.message}\n\nEğer giriş yapmadıysanız uygulamayı yeniden başlatıp giriş kodunu giriniz.`);
+
+        const statusEl = document.getElementById('updateStatus');
+        if (statusEl) statusEl.style.display = 'none';
         return false;
     }
 }
