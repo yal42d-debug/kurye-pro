@@ -1,19 +1,20 @@
 # Active Context
 
 ## Current State
-- **Version:** v44
-- **Last Major Update:** Removed the "kırmızı araba" (red car) notification and updated the versioning system to ensure clean cache reloading.
-- **Service Worker:** Active, using cache `kurye-pro-v44-clean-slate`.
+- **Version:** v34 (Reset Base)
+- **Status:** Android APK (Debug) + OTA Update System active.
+- **Service Worker:** DISABLED (to fix reload loops).
+- **Core:** React + Capacitor 6.
 
 ## Recent History
-- **v43:** Added "kırmızı araba" notification (red car icon).
-- **v42:** "Beyaz araba" notification test.
-- **Refactor:** Standardized the forceful update mechanism to handle cache invalidation more reliably.
+- **Optimization:** Fixed Android scroll lag by removing `backdrop-filter` and adding passive listeners.
+- **Fix:** Downgraded Capacitor & Android SDK to fix build errors.
+- **Feature:** Implemented GitHub-based Auto Update (`CapacitorUpdater`).
 
 ## Active Tasks
-- **Memory Bank Initialization:** Creating these documentation files to aid future development agents.
-- **Next Steps:** None immediately defined after documentation.
+- **Memory Bank:** Created `UPDATE_WORKFLOW.md` for agents.
+- **Deployment:** User has the base APK, now future updates will be pushed via `publish_update.sh`.
 
 ## Open Issues / TODOs
-- Ensure `version.txt` is always in sync with `index.html` `CURRENT_APP_VERSION`.
-- Monitor Service Worker lifecycle to prevent "waiting" state issues during rapid updates.
+- Monitor GitHub Raw caching (latency in updates).
+- Maintain `UPDATE_WORKFLOW.md` for future agents.

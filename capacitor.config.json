@@ -3,8 +3,10 @@
   "appName": "KuryePro",
   "webDir": "www",
   "bundledWebRuntime": false,
-  "server": {
-    "url": "https://yal42d-debug.github.io/kurye_pro/",
-    "cleartext": true
+  "plugins": {
+    "CapacitorUpdater": {
+      "autoUpdate": false,
+      "resetWhenUpdate": false
+    }
   }
 }

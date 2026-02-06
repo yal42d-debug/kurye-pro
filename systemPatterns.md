@@ -1,17 +1,26 @@
 # System Patterns
 
 ## Architecture
-- **Single Page Application (SPA):** The core logic resides in `index.html` inline scripts and external JS files.
-- **Client-Side Rendering:** Leaflet.js renders the map on the client side. Data is loaded from local JS files (`egitim_marker_cluster_group.js`, `bskcami_marker_cluster_group.js`).
-- **Service Worker Strategy:** `sw.js` implements a Cache-First strategy for static assets to ensure offline functionality. It uses a versioned cache name (e.g., `kurye-pro-v44-clean-slate`) to manage updates.
+- **Framework:** React 18 + Vite + TailwindCSS.
+- **Mobile Runtime:** Capacitor 6 (Android).
+- **State Management:** React Global Context / Direct DOM manipulation (Legacy hybrid).
+
+## Deployment & Updates
+- **Strategy:** Over-the-air (OTA) updates via `@capgo/capacitor-updater`.
+- **Source of Truth:** GitHub Repository (`yal42d-debug/kurye_pro`).
+- **Update Check:**
+  - App checks `https://raw.githubusercontent.com/.../version.json` on launch.
+  - If version mismatches, downloads `dist.zip` from GitHub Raw.
+- **Native Updates:** Requires manual APK build only when changing native dependencies (Gradle, Plugins).
 
 ## Key Technical Decisions
-- **No Build Step (mostly):** The web part uses raw HTML/JS/CSS. There is no Webpack/Vite build process for the web assets, allowing for simple debugging and deployment.
-- **Global Leaflet Objects:** `map`, `L`, and marker groups are available in the global scope for simplicity in this specific project context.
-- **Version Control in App:** `version.txt` acts as the source of truth for the deployed version. The app polls this file. If the fetched version > `CURRENT_APP_VERSION`, it triggers a cache wipe and reload.
+- **Passive Scroll Listeners:** Used to improve scroll performance on Android.
+- **No Glassmorphism:** Backdrop-filters are removed for Android GPU performance optimization.
+- **Service Worker:** Disabled to prevent caching loops and conflicts with Capacitor Updater.
+- **Auto-Publish Script:** `./publish_update.sh` handles building, version bumping, zipping, and preparing for Git push.
 
 ## Code Organization
-- `index.html`: Entry point, UI structure, and main logic.
-- `sw.js`: Service Worker for caching and offline support.
-- `*.js`: Helper files for marker data and map logic.
-- `android/`: Native Android project files (managed by Capacitor).
+- `src/`: React source code (`App.jsx`, `logic/`, `styles/`).
+- `www/`: Compiled production assets (created by `npm run build`).
+- `updates/`: Contains `version.json` and `dist.zip` for remote updates.
+- `android/`: Native Android project files.

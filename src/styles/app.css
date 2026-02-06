@@ -1,0 +1,751 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #0f172a;
+    color: #e2e8f0;
+    -webkit-tap-highlight-color: transparent;
+    /* Body padding removed, handled in header */
+}
+
+.card {
+    background-color: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 20px;
+}
+
+.input-dark {
+    background-color: #0f172a;
+    border: 1px solid #334155;
+    color: white;
+    transition: all 0.2s;
+}
+
+.input-dark:focus {
+    border-color: #6366f1;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+/* Fix for select options in dark mode */
+select option {
+    background-color: #0f172a;
+    color: white;
+    padding: 8px;
+}
+
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* Optimized for Android Performance */
+.glass-header {
+    background: #0f172a;
+    /* Solid color for performance */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: calc(env(safe-area-inset-top) + 16px) !important;
+    padding-bottom: 0.75rem !important;
+    height: auto !important;
+}
+
+.btn-counter {
+    background: #334155;
+    color: white;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    font-weight: bold;
+    transition: 0.2s;
+}
+
+.btn-counter:active {
+    transform: scale(0.90);
+    background: #475569;
+}
+
+.modal-overlay {
+    background-color: rgba(0, 0, 0, 0.95);
+    /* backdrop-filter removed for performance */
+}
+
+.tab-content {
+    display: none;
+    animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tab-content.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+        scale: 0.98;
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+        scale: 1;
+    }
+}
+
+.nav-item {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.calendar-day {
+    min-height: 60px;
+    position: relative;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    transition: 0.2s;
+    background: #1e293b;
+}
+
+.calendar-day:active {
+    transform: scale(0.95);
+    border-color: #6366f1;
+}
+
+.calendar-day.today {
+    border: 2px solid #6366f1;
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.btn-type {
+    transition: all 0.2s;
+    border: 1px solid #334155;
+    opacity: 0.6;
+}
+
+.btn-type.active {
+    opacity: 1;
+    border-width: 2px;
+    transform: scale(1.05);
+    border-color: white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.btn-action {
+    background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+    transition: all 0.2s;
+}
+
+.btn-action:active {
+    transform: scale(0.98);
+}
+
+.nav-cal-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: #334155;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.nav-cal-btn:active {
+    transform: scale(0.9);
+    background: #475569;
+}
+
+.dots-container {
+    display: flex;
+    gap: 2px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+
+.dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.activity-item {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.check-item {
+    transition: all 0.3s;
+    border: 1px solid #334155;
+}
+
+.check-item.checked {
+    opacity: 0.4;
+    background-color: #064e3b;
+    border-color: #059669;
+    text-decoration: line-through;
+    color: #6ee7b7;
+}
+
+.check-item:active {
+    transform: scale(0.98);
+}
+
+.toggle-btn {
+    flex: 1;
+    padding: 10px;
+    font-size: 12px;
+    font-weight: bold;
+    border-radius: 12px;
+    transition: all 0.3s;
+    text-align: center;
+}
+
+.toggle-btn.active {
+    background: white;
+    color: #0f172a;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.toggle-btn.inactive {
+    color: #94a3b8;
+    background: transparent;
+}
+
+#successOverlay {
+    transition: opacity 0.5s;
+    pointer-events: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Hava Durumu Kartları */
+.weather-row {
+    transition: all 0.2s;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.weather-row:last-child {
+    border-bottom: none;
+}
+
+.rain-alert-bg {
+    background: linear-gradient(90deg, rgba(30, 58, 138, 0.4) 0%, rgba(15, 23, 42, 0) 100%);
+    border-left: 3px solid #3b82f6;
+}
+
+/* PAKET SAYACI STİLLERİ */
+.perf-counter-card {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.8) 100%);
+}
+
+.counter-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    font-weight: bold;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.counter-btn:active {
+    transform: scale(0.90);
+}
+
+.counter-value {
+    font-size: 28px;
+    font-weight: 900;
+    min-width: 40px;
+    text-align: center;
+}
+
+.counter-type {
+    font-size: 10px;
+    color: #94a3b8;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.tier-info-badge {
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    display: inline-block;
+    margin-top: 4px;
+}
+
+/* ANLIK KAZANÇ KARTI STİLLERİ */
+.earning-card {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 20px;
+    overflow: hidden;
+}
+
+.earning-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.2s;
+}
+
+.earning-item:last-child {
+    border-bottom: none;
+}
+
+.earning-item:hover {
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
+.earning-label {
+    font-size: 10px;
+    color: #94a3b8;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.earning-value {
+    font-size: 18px;
+    font-weight: 800;
+    color: white;
+}
+
+.net-earning {
+    background: linear-gradient(135deg, rgba(5, 150, 105, 0.2) 0%, rgba(15, 23, 42, 0.8) 100%);
+    border: 1px solid rgba(5, 150, 105, 0.3);
+}
+
+/* FİNANSAL YÖNETİM STİLLERİ */
+.simulation-card {
+    background: linear-gradient(145deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%);
+    border: 1px solid rgba(99, 102, 241, 0.15);
+    border-radius: 24px;
+    overflow: hidden;
+}
+
+/* ÖZEL MODAL STİLLERİ */
+.custom-modal-overlay {
+    background-color: rgba(0, 0, 0, 0.95);
+    /* backdrop-filter removed */
+}
+
+.custom-modal {
+    animation: modalSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    transform-origin: center center;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.modal-btn-confirm {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    transition: all 0.2s;
+}
+
+.modal-btn-confirm:active {
+    transform: scale(0.98);
+}
+
+.modal-btn-cancel {
+    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+    transition: all 0.2s;
+}
+
+.modal-btn-cancel:active {
+    transform: scale(0.98);
+}
+
+/* DOCK STİLLERİ */
+.dock-container {
+    position: fixed;
+    left: 10px;
+    top: 290px;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.dock-trigger {
+    width: 44px;
+    height: 44px;
+    background: #1e293b;
+    /* backdrop-filter removed */
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    z-index: 52;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.dock-items {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: absolute;
+    top: 50px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px) scale(0.8);
+    z-index: 51;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    opacity: 0;
+    pointer-events: none;
+    width: max-content;
+}
+
+.dock-container.active .dock-trigger {
+    transform: rotate(90deg);
+    background: #4f46e5;
+    border-color: #4f46e5;
+    box-shadow: 0 0 15px rgba(79, 70, 229, 0.4);
+}
+
+.dock-container.active .dock-items {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0) scale(1);
+}
+
+.dock-link {
+    width: 54px;
+    height: 54px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: transform 0.2s;
+    font-size: 22px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dock-link:active {
+    transform: scale(0.9);
+}
+
+/* Başarı Mesajı */
+.success-toast {
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    z-index: 1000;
+    box-shadow: 0 8px 25px rgba(5, 150, 105, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+/* Form Sallama Animasyonu */
+@keyframes shake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
+        transform: translateX(-5px);
+    }
+
+    20%,
+    40%,
+    60%,
+    80% {
+        transform: translateX(5px);
+    }
+}
+
+.shake-animation {
+    animation: shake 0.5s ease-in-out;
+}
+
+/* Scroll to top butonu */
+.scroll-direction-btn {
+    position: fixed;
+    bottom: 130px;
+    right: 20px;
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    background: #4f46e5;
+    /* backdrop-filter removed */
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    color: white;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(20px) scale(0.8);
+}
+
+.scroll-direction-btn.visible {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0) scale(1);
+}
+
+.scroll-direction-btn:active {
+    transform: scale(0.92);
+    background: rgba(79, 70, 229, 0.95);
+}
+
+/* HIZLI GÜN SEÇİMİ BUTONLARI */
+.quick-day-btn {
+    font-size: 10px;
+    font-weight: bold;
+    padding: 6px 8px;
+    border-radius: 8px;
+    transition: all 0.2s;
+    margin: 2px;
+    flex: 1;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.quick-day-btn:hover {
+    transform: translateY(-1px);
+}
+
+.quick-day-btn:active {
+    transform: scale(0.95);
+}
+
+.quick-day-btn.active {
+    background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+    border-color: #4f46e5;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+/* Mobil Ayarları */
+@media (max-width: 768px) {
+    .scroll-direction-btn {
+        bottom: 110px;
+        right: 15px;
+        width: 46px;
+        height: 46px;
+        border-radius: 14px;
+        font-size: 18px;
+    }
+
+    .quick-day-btn {
+        font-size: 9px;
+        padding: 5px 6px;
+    }
+
+    .dock-container {
+        left: 8px;
+        top: 220px;
+    }
+}
+
+.add-income-btn {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    transition: all 0.2s;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.add-income-btn:active {
+    transform: scale(0.98);
+}
+
+/* KDV HESAPLAMA STİLLERİ */
+.vat-calculation-item {
+    background: rgba(30, 41, 59, 0.5);
+    border-radius: 12px;
+    padding: 10px;
+    margin-bottom: 8px;
+    border-left: 3px solid;
+}
+
+.vat-income {
+    border-left-color: #3b82f6;
+}
+
+.vat-fuel {
+    border-left-color: #ef4444;
+}
+
+.vat-net {
+    border-left-color: #10b981;
+}
+
+/* TRANSACTION HISTORY STİLLERİ */
+.transaction-history-item {
+    transition: all 0.2s;
+    padding: 10px 12px;
+    border-radius: 12px;
+    margin-bottom: 6px;
+    border-left: 4px solid;
+}
+
+.transaction-income {
+    background: rgba(16, 185, 129, 0.1);
+    border-left-color: #10b981;
+}
+
+.transaction-expense {
+    background: rgba(239, 68, 68, 0.1);
+    border-left-color: #ef4444;
+}
+
+.transaction-payment {
+    background: rgba(139, 92, 246, 0.1);
+    border-left-color: #8b5cf6;
+}
+
+/* ÖDEME GÜNÜ STİLLERİ */
+.payment-day-card {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(15, 23, 42, 0.8) 100%);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 16px;
+}
+
+/* MODERN SELECT STYLE */
+.modern-select-container {
+    position: relative;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+}
+
+.modern-select-container:hover {
+    border-color: rgba(99, 102, 241, 0.5);
+    background: rgba(30, 41, 59, 0.8);
+}
+
+.modern-select-container::after {
+    content: '\f078';
+    /* FontAwesome chevron-down */
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #818cf8;
+    pointer-events: none;
+    font-size: 12px;
+    transition: transform 0.3s;
+}
+
+.modern-select-container:focus-within::after {
+    transform: translateY(-50%) rotate(180deg);
+    color: #c7d2fe;
+}
+
+.modern-select {
+    width: 100%;
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    border: none;
+    color: white;
+    padding: 28px 16px 8px 16px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    outline: none;
+}
+
+.modern-select option {
+    background-color: #0f172a;
+    color: #e2e8f0;
+    padding: 10px;
+}
+
+/* DIALER MODAL STYLES */
+.dialer-btn {
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.2s;
+}
+
+.dialer-btn:active {
+    transform: scale(0.95);
+    background: rgba(51, 65, 85, 0.9);
+}
+
+.dialer-input {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    transition: all 0.2s;
+}
+
+.dialer-input:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
