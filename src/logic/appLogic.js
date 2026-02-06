@@ -1,4 +1,5 @@
 import { getBonusForMode, getDailyBonus, getKmPrice } from '../lib/calculations';
+import { fetchSecureData, getDeviceId } from '../lib/security';
 
 export function setBodyClass() {
     if (typeof document === 'undefined') return;
@@ -1807,68 +1808,6 @@ let internalMarker = null;
 let selectedLocation = null;
 let addressData = null;
 
-// --- SECURE REMOTE DATA HANDLER ---
-async function ensureAddressData() {
-    if (addressData && Object.keys(addressData).length > 0) return true;
-
-    // 1. RATE LIMIT CHECK (10 Dakikada Maks 3 Sorgu)
-    const LIMIT_Duration = 10 * 60 * 1000; // 10 dakika
-    const LIMIT_Count = 3;
-
-    let history = JSON.parse(localStorage.getItem('security_usage_log') || '[]');
-    const now = Date.now();
-
-    // Süresi dolmuş kayıtları temizle
-    history = history.filter(h => (now - h) < LIMIT_Duration);
-
-    if (history.length >= LIMIT_Count) {
-        alert("⚠️ GÜVENLİK KOTASI: 10 dakika içinde en fazla 3 kez adres verisi çekebilirsiniz. Lütfen bekleyin.");
-        return false;
-    }
-
-    try {
-        // Kullanıcıya bilgi ver
-        const statusEl = document.getElementById('updateStatus');
-        if (statusEl) { statusEl.innerText = "Veri güvenli sunucudan çekiliyor..."; statusEl.style.display = 'block'; }
-
-        // 2. REMOTE FETCH (GitHub'dan İndir)
-        // NOT: Cache'i engellemek için timestamp ekliyoruz (?t=...)
-        const remoteUrl = "https://raw.githubusercontent.com/yal42d-debug/kurye_pro/main/updates/secure_db.txt";
-        const res = await fetch(remoteUrl + '?t=' + now);
-
-        if (!res.ok) throw new Error("Sunucuya erişilemedi");
-
-        const fileContent = await res.text(); // Dosya içeriği aslında bir JS export stringi
-
-        // 3. PARSE & DECRYPT
-        // Dosyadan sadece tırnak içindeki şifreli kısmı cımbızla alıyoruz
-        const match = fileContent.match(/encryptedData\s*=\s*"([^"]+)"/);
-        if (!match || !match[1]) throw new Error("Veri formatı geçersiz");
-
-        const raw = match[1];
-
-        if (raw.startsWith('KRYSEC_')) {
-            const base64 = raw.replace('KRYSEC_', '').split('').reverse().join('');
-            const jsonStr = decodeURIComponent(escape(window.atob(base64)));
-            addressData = JSON.parse(jsonStr);
-            console.log("🔓 Veri başarıyla çözüldü (RAM).");
-
-            // Kotayı işle
-            history.push(now);
-            localStorage.setItem('security_usage_log', JSON.stringify(history));
-
-            if (statusEl) statusEl.style.display = 'none';
-            return true;
-        } else {
-            throw new Error('Şifreleme anahtarı uyumsuz');
-        }
-
-    } catch (err) {
-        console.error('Güvenli veri yükleme hatası:', err);
-        alert("Veri yüklenemedi: " + err.message + "\nİnternet bağlantınızı kontrol edin.");
-        return false;
-    }
-}
 // --- END SECURE HANDLER ---
 
 async function toggleMapModal() {
@@ -2034,3 +1973,41 @@ function openExternalMap() {
         alert('Önce konum seçmelisiniz.');
     }
 }
+
+// --- SECURE REMOTE DATA HANDLER ---
+async function ensureAddressData() {
+    if (addressData && Object.keys(addressData).length > 0) return true;
+
+    const LIMIT_Duration = 10 * 60 * 1000;
+    const LIMIT_Count = 3;
+    let history = JSON.parse(localStorage.getItem('security_usage_log') || '[]');
+    const now = Date.now();
+    history = history.filter(h => (now - h) < LIMIT_Duration);
+
+    if (history.length >= LIMIT_Count) {
+        alert("⚠️ KOTA DOLDU: 10 dakika içinde en fazla 3 kez sorgu yapabilirsiniz.");
+        return false;
+    }
+
+    try {
+        const statusEl = document.getElementById('updateStatus');
+        if (statusEl) { statusEl.innerText = "Yönetici onayı kontrol ediliyor..."; statusEl.style.display = 'block'; }
+
+        addressData = await fetchSecureData();
+        console.log("🔓 Veri Erişim İzni Onaylandı.");
+
+        history.push(now);
+        localStorage.setItem('security_usage_log', JSON.stringify(history));
+
+        if (statusEl) statusEl.style.display = 'none';
+        return true;
+
+    } catch (err) {
+        console.error('Erişim Hatası:', err);
+        const deviceId = getDeviceId();
+        alert(`⛔ ERİŞİM ENGELLENDİ\n\nSebep: ${err.message}\n\nCihaz Kimliğiniz (Admin'e iletin):\n${deviceId}`);
+        if (typeof statusEl !== 'undefined' && statusEl) statusEl.style.display = 'none';
+        return false;
+    }
+}
+// --- END SECURE HANDLER ---
