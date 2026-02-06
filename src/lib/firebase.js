@@ -19,13 +19,13 @@ const auth = getAuth(app);
 const db = getDatabase(app);
 const provider = new GoogleAuthProvider();
 
-// 2. Google ile Giriş Yap (SADECE POPUP - DAHA STABİL)
+// 2. Google ile Giriş Yap (POPUP - Hızlı Versiyon)
 export async function loginWithGoogle() {
     try {
         const result = await signInWithPopup(auth, provider);
         const user = result.user;
 
-        // Non-blocking: Arka planda kaydet, kullanıcıyı bekletme!
+        // Non-blocking: Kaydı arka planda yap, kullanıcıyı bekletme
         saveUserToDB(user).catch(console.error);
 
         return { success: true, user: user };
@@ -35,7 +35,7 @@ export async function loginWithGoogle() {
     }
 }
 
-// Redirect Handler'a gerek kalmadı (Popup senkron çalışır)
+// Redirect Handler (Boş - Hata vermemesi için)
 export async function handleRedirectResult() { return null; }
 
 export async function logoutUser() {
@@ -51,8 +51,8 @@ async function saveUserToDB(user) {
     if (snapshot.exists()) {
         await update(userRef, {
             lastLogin: now,
-            photoURL: user.photoURL,
             displayName: user.displayName,
+            photoURL: user.photoURL,
             email: user.email
         });
     } else {
