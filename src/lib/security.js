@@ -10,60 +10,79 @@ const BASE_URL = `https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/ma
 export function getDeviceId() {
     let id = localStorage.getItem('device_guid');
     if (!id) {
-        id = uuidv4(); // Örn: 6c84fb90-12c4-11e1-840d-7b25c5ee775a
+        id = uuidv4();
         localStorage.setItem('device_guid', id);
     }
     return id;
 }
 
-// 2. İzin Kontrolü Yap
-export async function checkAccess() {
+// 2. Erişim Kontrolü (Şifre + Ban Listesi)
+export async function checkAccess(userEnteredCode = null) {
     const myId = getDeviceId();
-    console.log("🔍 Cihaz Kimliği:", myId);
+
+    // Daha önce giriş yapmış mı?
+    const isLocalAuthenticated = localStorage.getItem('auth_success') === 'true';
 
     try {
-        // GitHub'dan güncel izin listesini çek (Cache'i önlemek için ?t=...)
-        const res = await fetch(`${BASE_URL}/allowed_devices.json?t=${Date.now()}`);
-        if (!res.ok) throw new Error("Sunucu listesine ulaşılamadı.");
+        // Config ve Ban Listesini Çek
+        const [configRes, listRes] = await Promise.all([
+            fetch(`${BASE_URL}/app_config.json?t=${Date.now()}`),
+            fetch(`${BASE_URL}/allowed_devices.json?t=${Date.now()}`)
+        ]);
 
-        const accessList = await res.json();
+        if (!configRes.ok || !listRes.ok) throw new Error("Sunucuya ulaşılamadı.");
 
-        // Banlı mı?
-        if (accessList.banned_devices.includes(myId)) {
-            return { allowed: false, reason: "Cihazınız ENGELLENMİŞTİR." };
+        const config = await configRes.json();
+        const list = await listRes.json();
+
+        // 1. Önce Ban Kontrolü (En Önemli)
+        if (list.banned_devices.includes(myId)) {
+            return { allowed: false, reason: "Cihazınız ENGELLENMİŞTİR.", status: 'banned' };
         }
 
-        // İzinli mi?
-        if (accessList.active_devices.includes(myId) || accessList.active_devices.includes("admin_device_001")) {
-            // "admin_device_001" sadece test amaçlıdır, prodüksiyonda kendi ID'nizi ekleyin.
-            return { allowed: true };
+        // 2. WhiteList Kontrolü (Yönetici elle eklediyse şifre sorma)
+        if (list.active_devices.includes(myId)) {
+            localStorage.setItem('auth_success', 'true');
+            return { allowed: true, status: 'authorized' };
         }
 
-        return {
-            allowed: false,
-            reason: "Yetkisiz Cihaz.",
-            userId: myId
-        };
+        // 3. Şifre Kontrolü
+        if (userEnteredCode) {
+            if (userEnteredCode === config.access_code) {
+                localStorage.setItem('auth_success', 'true');
+                return { allowed: true, status: 'success' };
+            } else {
+                return { allowed: false, reason: "Hatalı Giriş Kodu", status: 'wrong_code' };
+            }
+        }
+
+        // 4. Daha önce girmiş mi?
+        if (isLocalAuthenticated) {
+            return { allowed: true, status: 'authenticated' };
+        }
+
+        // Hiçbiri değilse LOGIN gerekiyor
+        return { allowed: false, reason: "Giriş Gerekli", status: 'login_required' };
 
     } catch (err) {
-        console.error("Güvenlik kontrol hatası:", err);
-        return { allowed: false, reason: "İnternet bağlantısı yok veya sunucu hatası." };
+        console.error("Auth Error:", err);
+        // İnternet yoksa ve daha önce girmişse izin ver (Offline Mode)
+        if (isLocalAuthenticated) return { allowed: true, status: 'offline_cached' };
+        return { allowed: false, reason: "Bağlantı Hatası", status: 'error' };
     }
 }
 
-// 3. Veriyi Güvenli Çek (Sadece izinliyse çalışır)
+// 3. Güvenli Veri Çekme
 export async function fetchSecureData() {
-    // Önce izin kontrolü
+    // Erişim kontrolü zaten UI açılışında yapılıyor ama garanti olsun
     const access = await checkAccess();
-    if (!access.allowed) {
-        throw new Error(access.reason + (access.userId ? `\nID: ${access.userId}` : ""));
+    if (!access.allowed && access.status !== 'offline_cached') { // Offline modda izin ver
+        throw new Error(access.reason);
     }
 
-    // İzinliyse şifreli veriyi indir
     const res = await fetch(`${BASE_URL}/secure_db.txt?t=${Date.now()}`);
     if (!res.ok) throw new Error("Veri indirilemedi.");
 
-    // Şifreyi Çöz
     const text = await res.text();
     const match = text.match(/encryptedData\s*=\s*"([^"]+)"/);
 

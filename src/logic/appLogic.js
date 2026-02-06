@@ -1,5 +1,5 @@
 import { getBonusForMode, getDailyBonus, getKmPrice } from '../lib/calculations';
-import { fetchSecureData, getDeviceId } from '../lib/security';
+import { fetchSecureData, getDeviceId, checkAccess } from '../lib/security';
 
 export function setBodyClass() {
     if (typeof document === 'undefined') return;
@@ -162,6 +162,9 @@ export function initApp() {
             window.scrollTo({ top: scrollTarget === 'bottom' ? document.body.scrollHeight : 0, behavior: 'smooth' });
         });
     }
+
+    // Auth Check
+    checkAppAuth();
 }
 
 // --- CORE FUNCTIONS (UPDATED) ---
@@ -1808,6 +1811,48 @@ let internalMap = null;
 let internalMarker = null;
 let selectedLocation = null;
 let addressData = null;
+
+// --- AUTH & SECURITY ---
+// --- AUTH & SECURITY ---
+// (Import moved to top)
+
+// Global Login Fonksiyonu
+window.attemptLogin = async function () {
+    const code = document.getElementById('accessCodeInput').value;
+    const btn = document.getElementById('btnLoginBtn');
+
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+    const result = await checkAccess(code);
+
+    if (result.allowed) {
+        document.getElementById('loginOverlay').classList.add('hidden');
+        showVisualSuccess("Giriş Başarılı", "Hoşgeldiniz!");
+    } else {
+        alert(result.reason);
+        btn.innerHTML = 'GİRİŞ YAP';
+    }
+}
+
+// Uygulama Başlangıcında Kontrol
+export async function checkAppAuth() {
+    const status = await checkAccess();
+
+    // Eğer Login gerekliyse Overlay'i göster
+    if (status.status === 'login_required' || status.status === 'banned') {
+        const overlay = document.getElementById('loginOverlay');
+        if (overlay) {
+            overlay.classList.remove('hidden');
+            if (status.status === 'banned') {
+                document.getElementById('loginTitle').innerText = "CİHAZ ENGELLENDİ";
+                document.getElementById('loginTitle').classList.add('text-red-500');
+                document.getElementById('accessCodeInput').disabled = true;
+                document.getElementById('btnLoginBtn').disabled = true;
+                document.getElementById('deviceInfoText').innerText = "ID: " + getDeviceId();
+            }
+        }
+    }
+}
 
 // --- END SECURE HANDLER ---
 
