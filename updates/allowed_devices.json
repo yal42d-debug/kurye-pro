@@ -1,7 +1,6 @@
 {
   "comment": "Bu dosya erişim izni olan cihazları kontrol eder.",
   "active_devices": [
-    "admin_device_001",
     "test_device_beta"
   ],
   "banned_devices": []
