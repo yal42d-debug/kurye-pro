@@ -47,6 +47,7 @@ export function bindAppGlobals() {
         posTetikle,
         processPayment,
         quickSearchAddress,
+        selectQuickResult,
         removeDialerNumber,
         resetAllCounters,
         resetPerfForm,
