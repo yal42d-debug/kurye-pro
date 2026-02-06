@@ -2,8 +2,7 @@
   "comment": "Bu dosya erişim izni olan cihazları kontrol eder.",
   "active_devices": [
     "admin_device_001",
-    "test_device_beta",
-    "9dc8236b-6e90-4bc4-b223-f5453e3 efa27"
+    "test_device_beta"
   ],
   "banned_devices": []
 }
