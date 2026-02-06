@@ -1807,34 +1807,69 @@ let internalMarker = null;
 let selectedLocation = null;
 let addressData = null;
 
+// --- SECURE REMOTE DATA HANDLER ---
 async function ensureAddressData() {
-    if (addressData) return;
+    if (addressData && Object.keys(addressData).length > 0) return true;
+
+    // 1. RATE LIMIT CHECK (10 Dakikada Maks 3 Sorgu)
+    const LIMIT_Duration = 10 * 60 * 1000; // 10 dakika
+    const LIMIT_Count = 3;
+
+    let history = JSON.parse(localStorage.getItem('security_usage_log') || '[]');
+    const now = Date.now();
+
+    // Süresi dolmuş kayıtları temizle
+    history = history.filter(h => (now - h) < LIMIT_Duration);
+
+    if (history.length >= LIMIT_Count) {
+        alert("⚠️ GÜVENLİK KOTASI: 10 dakika içinde en fazla 3 kez adres verisi çekebilirsiniz. Lütfen bekleyin.");
+        return false;
+    }
+
     try {
-        if (!addressData) {
-            try {
-                const mod = await import('../data/addressDataEncrypted.js');
-                const raw = mod.encryptedData;
+        // Kullanıcıya bilgi ver
+        const statusEl = document.getElementById('updateStatus');
+        if (statusEl) { statusEl.innerText = "Veri güvenli sunucudan çekiliyor..."; statusEl.style.display = 'block'; }
 
-                if (raw.startsWith('KRYSEC_')) {
-                    const base64 = raw.replace('KRYSEC_', '').split('').reverse().join('');
+        // 2. REMOTE FETCH (GitHub'dan İndir)
+        // NOT: Cache'i engellemek için timestamp ekliyoruz (?t=...)
+        const remoteUrl = "https://raw.githubusercontent.com/yal42d-debug/kurye_pro/main/updates/secure_db.txt";
+        const res = await fetch(remoteUrl + '?t=' + now);
 
-                    // Browser environment decoding
-                    const jsonStr = decodeURIComponent(escape(window.atob(base64)));
-                    addressData = JSON.parse(jsonStr);
+        if (!res.ok) throw new Error("Sunucuya erişilemedi");
 
-                } else {
-                    console.error('Invalid encrypted data format');
-                    addressData = {};
-                }
-            } catch (err) {
-                console.error('Failed to load address data:', err);
-                addressData = {};
-            }
+        const fileContent = await res.text(); // Dosya içeriği aslında bir JS export stringi
+
+        // 3. PARSE & DECRYPT
+        // Dosyadan sadece tırnak içindeki şifreli kısmı cımbızla alıyoruz
+        const match = fileContent.match(/encryptedData\s*=\s*"([^"]+)"/);
+        if (!match || !match[1]) throw new Error("Veri formatı geçersiz");
+
+        const raw = match[1];
+
+        if (raw.startsWith('KRYSEC_')) {
+            const base64 = raw.replace('KRYSEC_', '').split('').reverse().join('');
+            const jsonStr = decodeURIComponent(escape(window.atob(base64)));
+            addressData = JSON.parse(jsonStr);
+            console.log("🔓 Veri başarıyla çözüldü (RAM).");
+
+            // Kotayı işle
+            history.push(now);
+            localStorage.setItem('security_usage_log', JSON.stringify(history));
+
+            if (statusEl) statusEl.style.display = 'none';
+            return true;
+        } else {
+            throw new Error('Şifreleme anahtarı uyumsuz');
         }
+
     } catch (err) {
-        console.error('Adres verisi yüklenemedi:', err);
+        console.error('Güvenli veri yükleme hatası:', err);
+        alert("Veri yüklenemedi: " + err.message + "\nİnternet bağlantınızı kontrol edin.");
+        return false;
     }
 }
+// --- END SECURE HANDLER ---
 
 async function toggleMapModal() {
     const modal = document.getElementById('mapModal');
@@ -1851,6 +1886,21 @@ async function toggleMapModal() {
     } else {
         modal.classList.add('hidden');
         modal.classList.remove('animate-modal-in');
+
+        // SECURITY CLEANUP: RAM temizliği
+        console.log("🔒 Güvenlik: Adres verisi RAM'den silindi.");
+        addressData = null;
+
+        // Inputları sıfırla
+        document.getElementById('mapMahalle').innerHTML = '<option value="">Seçiniz...</option>';
+        document.getElementById('mapSokak').innerHTML = '<option value="">Önce Mahalle Seçin</option>';
+        document.getElementById('mapKapi').innerHTML = '<option value="">Önce Sokak Seçin</option>';
+
+        // Harita varsa kaldır (bellek sızıntısını önle)
+        if (internalMap) {
+            internalMap.remove();
+            internalMap = null;
+        }
     }
 }
 
