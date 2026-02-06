@@ -1825,8 +1825,13 @@ window.attemptLogin = async function () {
 
     const result = await startGoogleLogin();
 
-    if (result.type === 'redirect') {
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Yönlendiriliyor...';
+    if (result.type === 'redirect' || result.type === 'external_browser') {
+        btn.innerHTML = '<i class="fa-solid fa-external-link-alt mr-2"></i> Tarayıcıda Giriş Yap';
+        btn.disabled = false;
+
+        // Harici tarayıcıda giriş yapıldıktan sonra uygulamaya dön mesajı
+        const infoText = document.getElementById('deviceInfoText');
+        if (infoText) infoText.innerText = "Tarayıcıda giriş yaptıktan sonra uygulamayı yeniden açın.";
         return;
     }
 
@@ -1834,7 +1839,6 @@ window.attemptLogin = async function () {
         document.getElementById('loginOverlay').classList.add('hidden');
         showVisualSuccess("Giriş Başarılı", `Hoşgeldin, ${result.user.displayName}`);
     } else {
-        // Redirect hatası değilse hata göster
         if (result.error && !result.error.includes('auth/popup-blocked')) {
             alert("Giriş Başarısız: " + result.error);
         }

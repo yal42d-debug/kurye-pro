@@ -1,7 +1,9 @@
 
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut } from "firebase/auth";
+import { getAuth, signOut, onAuthStateChanged } from "firebase/auth";
 import { getDatabase, ref, set, get, update } from "firebase/database";
+import { Capacitor } from "@capacitor/core";
+import { Browser } from "@capacitor/browser";
 
 const firebaseConfig = {
     apiKey: "AIzaSyBfN1-OQUQgQTu358UO6aZ-BDIbjWZq1Mc",
@@ -17,28 +19,24 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
-const provider = new GoogleAuthProvider();
 
-// 2. Google ile Giriş Yap (MOBİL UYUMLU REDIRECT)
+// Google ile Giriş - Harici Tarayıcıda Aç
 export async function loginWithGoogle() {
     try {
-        // Mobilde Redirect Kullan (Daha güvenli ve hatasız)
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
-        if (isMobile) {
-            await signInWithRedirect(auth, provider);
-            return { type: 'redirect' };
+        if (Capacitor.isNativePlatform()) {
+            // Mobilde: Chrome Custom Tab'da aç
+            await Browser.open({
+                url: 'https://kuryeprov44.web.app?login=true',
+                presentationStyle: 'popover'
+            });
+            return { type: 'external_browser' };
         } else {
-            // Masaüstünde Popup deneyebiliriz ama hata verirse Redirect'e düşeriz
-            try {
-                const result = await signInWithPopup(auth, provider);
-                saveUserToDB(result.user).catch(console.error);
-                return { success: true, user: result.user };
-            } catch (popupErr) {
-                console.warn("Popup blocked/failed, trying redirect...", popupErr);
-                await signInWithRedirect(auth, provider);
-                return { type: 'redirect' };
-            }
+            // Web'de: Normal popup
+            const { GoogleAuthProvider, signInWithPopup } = await import("firebase/auth");
+            const provider = new GoogleAuthProvider();
+            const result = await signInWithPopup(auth, provider);
+            saveUserToDB(result.user).catch(console.error);
+            return { success: true, user: result.user };
         }
     } catch (error) {
         console.error("Login Error:", error);
@@ -46,21 +44,7 @@ export async function loginWithGoogle() {
     }
 }
 
-// Redirect Sonucunu Yakala
-export async function handleRedirectResult() {
-    try {
-        const result = await getRedirectResult(auth);
-        if (result && result.user) {
-            console.log("Redirect Login Başarılı:", result.user.email);
-            saveUserToDB(result.user).catch(console.error);
-            return { success: true, user: result.user };
-        }
-        return null;
-    } catch (error) {
-        console.error("Redirect Error:", error);
-        return { success: false, error: error.message };
-    }
-}
+export async function handleRedirectResult() { return null; }
 
 export async function logoutUser() {
     await signOut(auth);
@@ -71,26 +55,10 @@ async function saveUserToDB(user) {
     const userRef = ref(db, 'users/' + user.uid);
     const snapshot = await get(userRef);
     const now = new Date().toISOString();
-
     if (snapshot.exists()) {
-        await update(userRef, {
-            lastLogin: now,
-            displayName: user.displayName,
-            photoURL: user.photoURL,
-            email: user.email
-        });
+        await update(userRef, { lastLogin: now, displayName: user.displayName, photoURL: user.photoURL, email: user.email });
     } else {
-        await set(userRef, {
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName,
-            photoURL: user.photoURL,
-            role: 'user',
-            isBanned: false,
-            dailyLimit: 1000,
-            createdAt: now,
-            lastLogin: now
-        });
+        await set(userRef, { uid: user.uid, email: user.email, displayName: user.displayName, photoURL: user.photoURL, role: 'user', isBanned: false, dailyLimit: 1000, createdAt: now, lastLogin: now });
     }
     localStorage.setItem('firebase_uid', user.uid);
 }
@@ -103,9 +71,8 @@ export async function checkUserStatus(uid) {
             const data = snapshot.val();
             if (data.isBanned) return { allowed: false, reason: "HESABINIZ YASAKLANMIŞTIR.", status: 'banned' };
             return { allowed: true, data: data };
-        } else {
-            return { allowed: false, reason: "Kullanıcı kaydı bulunamadı." };
         }
+        return { allowed: false, reason: "Kullanıcı kaydı bulunamadı." };
     } catch (err) {
         return { allowed: false, reason: "Sunucu hatası." };
     }

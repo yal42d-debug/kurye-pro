@@ -2,7 +2,6 @@
   "appId": "com.kurye.pro",
   "appName": "KuryePro",
   "webDir": "www",
-  "bundledWebRuntime": false,
   "plugins": {
     "CapacitorUpdater": {
       "autoUpdate": false,
