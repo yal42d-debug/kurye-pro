@@ -1837,28 +1837,32 @@ window.attemptLogin = async function () {
 
 // Uygulama Başlangıcında Kontrol
 export async function checkAppAuth() {
+    const infoText = document.getElementById('deviceInfoText');
+    if (infoText) infoText.innerText = "Yükleniyor...";
+
     const status = await checkAccess();
 
     const overlay = document.getElementById('loginOverlay');
-    const infoText = document.getElementById('deviceInfoText');
 
-    if (status.status === 'login_required' || status.status === 'banned') {
+    if (status.status === 'authorized') {
+        // GİRİŞ VAR -> Overlay'i Kaldır
         if (overlay) {
-            overlay.classList.remove('hidden');
-            if (status.status === 'banned') {
-                document.getElementById('loginTitle').innerText = "HESAP YASAKLANDI";
-                document.getElementById('loginTitle').classList.add('text-red-500');
-                document.getElementById('btnLoginBtn').style.display = 'none'; // Girişi kapat
-                infoText.innerText = "Yönetici ile iletişime geçin.";
-            } else {
-                // Normal giriş ekranı
-                infoText.innerText = "Güvenli Giriş Sistemi v4.0";
-            }
+            overlay.classList.add('transition-opacity', 'duration-500', 'opacity-0');
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+                overlay.style.opacity = '1';
+            }, 500);
         }
     } else {
-        // Zaten giriş yapmış
-        if (overlay) overlay.classList.add('hidden');
-        console.log("Kullanıcı aktif:", status.user.email);
+        // GİRİŞ YOK -> Overlay Kalsın
+        if (infoText) infoText.innerText = "Güvenli Giriş v4.2";
+
+        if (status.status === 'banned') {
+            document.getElementById('loginTitle').innerText = "HESAP YASAKLANDI";
+            document.getElementById('loginTitle').classList.add('text-red-500');
+            document.getElementById('btnLoginBtn').style.display = 'none';
+            if (infoText) infoText.innerText = "Yönetici ile iletişime geçin.";
+        }
     }
 }
 
