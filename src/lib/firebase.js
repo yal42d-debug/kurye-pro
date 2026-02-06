@@ -1,7 +1,7 @@
 
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "firebase/auth";
-import { getDatabase, ref, set, get, child, update } from "firebase/database";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
+import { getDatabase, ref, set, get, update } from "firebase/database";
 
 const firebaseConfig = {
     apiKey: "AIzaSyBfN1-OQUQgQTu358UO6aZ-BDIbjWZq1Mc",
@@ -14,63 +14,35 @@ const firebaseConfig = {
     measurementId: "G-313RD4XLZW"
 };
 
-// 1. Başlat
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
 const provider = new GoogleAuthProvider();
 
-// 2. Google ile Giriş Yap (POP-UP veya REDIRECT)
+// 2. Google ile Giriş Yap (SADECE POPUP - DAHA STABİL)
 export async function loginWithGoogle() {
     try {
-        // Mobilde Redirect Tercih Edilir
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
-        if (isMobile) {
-            await signInWithRedirect(auth, provider);
-            return { type: 'redirect' };
-        } else {
-            const result = await signInWithPopup(auth, provider);
-            await saveUserToDB(result.user);
-            return { success: true, user: result.user };
-        }
+        const result = await signInWithPopup(auth, provider);
+        const user = result.user;
+        await saveUserToDB(user);
+        return { success: true, user: user };
     } catch (error) {
         console.error("Login Error:", error);
-        // Popup engellendiyse redirect dene
-        if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user') {
-            await signInWithRedirect(auth, provider);
-            return { type: 'redirect' };
-        }
         return { success: false, error: error.message };
     }
 }
 
-// 2.5 Redirect Dönüşünü Yakala (Sayfa Yüklendiğinde Çağrılmalı)
-export async function handleRedirectResult() {
-    try {
-        const result = await getRedirectResult(auth);
-        if (result && result.user) {
-            await saveUserToDB(result.user);
-            return { success: true, user: result.user };
-        }
-        return null;
-    } catch (error) {
-        console.error("Redirect Error:", error);
-        return { success: false, error: error.message };
-    }
-}
+// Redirect Handler'a gerek kalmadı (Popup senkron çalışır)
+export async function handleRedirectResult() { return null; }
 
-// 3. Çıkış Yap
 export async function logoutUser() {
     await signOut(auth);
     localStorage.removeItem('firebase_uid');
 }
 
-// 4. Kullanıcıyı DB'ye Kaydet
 async function saveUserToDB(user) {
     const userRef = ref(db, 'users/' + user.uid);
     const snapshot = await get(userRef);
-
     const now = new Date().toISOString();
 
     if (snapshot.exists()) {
@@ -96,10 +68,8 @@ async function saveUserToDB(user) {
     localStorage.setItem('firebase_uid', user.uid);
 }
 
-// 5. Yetki Kontrolü
 export async function checkUserStatus(uid) {
     if (!uid) return { allowed: false, reason: "Giriş yapılmamış." };
-
     try {
         const snapshot = await get(ref(db, 'users/' + uid));
         if (snapshot.exists()) {
@@ -110,7 +80,6 @@ export async function checkUserStatus(uid) {
             return { allowed: false, reason: "Kullanıcı kaydı bulunamadı." };
         }
     } catch (err) {
-        console.error(err);
         return { allowed: false, reason: "Sunucu hatası." };
     }
 }
