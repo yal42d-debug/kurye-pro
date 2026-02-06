@@ -24,7 +24,10 @@ export async function loginWithGoogle() {
     try {
         const result = await signInWithPopup(auth, provider);
         const user = result.user;
-        await saveUserToDB(user);
+
+        // Non-blocking: Arka planda kaydet, kullanıcıyı bekletme!
+        saveUserToDB(user).catch(console.error);
+
         return { success: true, user: user };
     } catch (error) {
         console.error("Login Error:", error);
