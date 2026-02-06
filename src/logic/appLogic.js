@@ -1825,6 +1825,12 @@ window.attemptLogin = async function () {
 
     const result = await startGoogleLogin();
 
+    if (result.type === 'redirect') {
+        // Yönlendirme yapılıyor, kullanıcıyı bilgilendir
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Yönlendiriliyor...';
+        return;
+    }
+
     if (result.success) {
         document.getElementById('loginOverlay').classList.add('hidden');
         showVisualSuccess("Giriş Başarılı", `Hoşgeldin, ${result.user.displayName}`);

@@ -1,32 +1,34 @@
 
-import { loginWithGoogle, checkUserStatus, logoutUser, auth } from './firebase';
+import { loginWithGoogle, handleRedirectResult, checkUserStatus, logoutUser, auth } from './firebase';
 
-// Mevcut şifreli veri adresi (Değişmedi)
+// Mevcut şifreli veri adresi
 const REPO_USER = 'yal42d-debug';
 const REPO_NAME = 'kurye_pro';
 const BASE_URL = `https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/updates`;
 
-// 1. Erişim Kontrolü (ARTIK FIREBASE ÜZERİNDEN)
+// 1. Erişim Kontrolü
 export async function checkAccess() {
-    // Firebase Auth durumunu bekle
+    // 1. Önce Redirect sonucunu kontrol et (Eğer Google'dan dönüyorsak)
+    const redirectRes = await handleRedirectResult();
+    if (redirectRes && redirectRes.success) {
+        // Redirect başarılı, kullanıcı zaten saveUserToDB ile kaydedildi.
+        // authStateChanged bunu birazdan yakalayacak.
+    }
+
+    // 2. Auth Durumunu Bekle
     return new Promise((resolve) => {
-        // Auth state değişmesini bekle (Sayfa yenilenince ilk başta null olabilir)
         const unsubscribe = auth.onAuthStateChanged(async (user) => {
-            unsubscribe(); // Tek seferlik dinle
+            unsubscribe();
 
             if (user) {
-                // Giriş yapılmış, DB'den detayları kontrol et (Banlı mı?)
                 const status = await checkUserStatus(user.uid);
-
                 if (status.allowed) {
                     resolve({ allowed: true, user: status.data, status: 'authorized' });
                 } else {
-                    // Giriş var ama Banlı
                     await logoutUser();
                     resolve({ allowed: false, reason: status.reason, status: status.status });
                 }
             } else {
-                // Giriş yok
                 resolve({ allowed: false, reason: "Giriş Yapılmalı", status: 'login_required' });
             }
         });
@@ -43,11 +45,9 @@ export async function fetchSecureData() {
     const access = await checkAccess();
     if (!access.allowed) throw new Error(access.reason);
 
-    // Veriyi İndir
     const res = await fetch(`${BASE_URL}/secure_db.txt?t=${Date.now()}`);
     if (!res.ok) throw new Error("Veri indirilemedi.");
 
-    // Şifreyi Çöz
     const text = await res.text();
     const match = text.match(/encryptedData\s*=\s*"([^"]+)"/);
 

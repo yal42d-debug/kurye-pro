@@ -1,6 +1,6 @@
 
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "firebase/auth";
 import { getDatabase, ref, set, get, child, update } from "firebase/database";
 
 const firebaseConfig = {
@@ -20,18 +20,42 @@ const auth = getAuth(app);
 const db = getDatabase(app);
 const provider = new GoogleAuthProvider();
 
-// 2. Google ile Giriş Yap
+// 2. Google ile Giriş Yap (POP-UP veya REDIRECT)
 export async function loginWithGoogle() {
     try {
-        const result = await signInWithPopup(auth, provider);
-        const user = result.user;
+        // Mobilde Redirect Tercih Edilir
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-        // Giriş başarılı, kullanıcıyı veritabanına kaydet/güncelle
-        await saveUserToDB(user);
-
-        return { success: true, user: user };
+        if (isMobile) {
+            await signInWithRedirect(auth, provider);
+            return { type: 'redirect' };
+        } else {
+            const result = await signInWithPopup(auth, provider);
+            await saveUserToDB(result.user);
+            return { success: true, user: result.user };
+        }
     } catch (error) {
         console.error("Login Error:", error);
+        // Popup engellendiyse redirect dene
+        if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user') {
+            await signInWithRedirect(auth, provider);
+            return { type: 'redirect' };
+        }
+        return { success: false, error: error.message };
+    }
+}
+
+// 2.5 Redirect Dönüşünü Yakala (Sayfa Yüklendiğinde Çağrılmalı)
+export async function handleRedirectResult() {
+    try {
+        const result = await getRedirectResult(auth);
+        if (result && result.user) {
+            await saveUserToDB(result.user);
+            return { success: true, user: result.user };
+        }
+        return null;
+    } catch (error) {
+        console.error("Redirect Error:", error);
         return { success: false, error: error.message };
     }
 }
@@ -42,7 +66,7 @@ export async function logoutUser() {
     localStorage.removeItem('firebase_uid');
 }
 
-// 4. Kullanıcıyı DB'ye Kaydet (İlk kez giriyorsa varsayılanları ata)
+// 4. Kullanıcıyı DB'ye Kaydet
 async function saveUserToDB(user) {
     const userRef = ref(db, 'users/' + user.uid);
     const snapshot = await get(userRef);
@@ -50,31 +74,29 @@ async function saveUserToDB(user) {
     const now = new Date().toISOString();
 
     if (snapshot.exists()) {
-        // Zaten var, sadece son görülmeyi güncelle
         await update(userRef, {
             lastLogin: now,
-            photoURL: user.photoURL, // Foto değişmiş olabilir
-            displayName: user.displayName
+            photoURL: user.photoURL,
+            displayName: user.displayName,
+            email: user.email
         });
     } else {
-        // Yeni Kullanıcı!
         await set(userRef, {
             uid: user.uid,
             email: user.email,
             displayName: user.displayName,
             photoURL: user.photoURL,
-            role: 'user',        // 'admin' veya 'user'
-            isBanned: false,     // Ban durumu
-            dailyLimit: 1000,    // Günlük sorgu hakkı (Varsayılan)
+            role: 'user',
+            isBanned: false,
+            dailyLimit: 1000,
             createdAt: now,
             lastLogin: now
         });
     }
-
     localStorage.setItem('firebase_uid', user.uid);
 }
 
-// 5. Kullanıcı Yetki Kontrolü (DB'den Güncel Durumu Çek)
+// 5. Yetki Kontrolü
 export async function checkUserStatus(uid) {
     if (!uid) return { allowed: false, reason: "Giriş yapılmamış." };
 
@@ -82,11 +104,7 @@ export async function checkUserStatus(uid) {
         const snapshot = await get(ref(db, 'users/' + uid));
         if (snapshot.exists()) {
             const data = snapshot.val();
-
-            if (data.isBanned) {
-                return { allowed: false, reason: "HESABINIZ YASAKLANMIŞTIR.", status: 'banned' };
-            }
-
+            if (data.isBanned) return { allowed: false, reason: "HESABINIZ YASAKLANMIŞTIR.", status: 'banned' };
             return { allowed: true, data: data };
         } else {
             return { allowed: false, reason: "Kullanıcı kaydı bulunamadı." };
@@ -97,5 +115,4 @@ export async function checkUserStatus(uid) {
     }
 }
 
-// Export Auth & DB
 export { auth, db };
