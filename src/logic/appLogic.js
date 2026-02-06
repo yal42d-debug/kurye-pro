@@ -1,5 +1,5 @@
 import { getBonusForMode, getDailyBonus, getKmPrice } from '../lib/calculations';
-import { fetchSecureData, getDeviceId, checkAccess } from '../lib/security';
+import { fetchSecureData, startGoogleLogin, checkAccess } from '../lib/security';
 
 export function setBodyClass() {
     if (typeof document === 'undefined') return;
@@ -1818,19 +1818,20 @@ let addressData = null;
 
 // Global Login Fonksiyonu
 window.attemptLogin = async function () {
-    const code = document.getElementById('accessCodeInput').value;
     const btn = document.getElementById('btnLoginBtn');
 
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Google ile Bağlanılıyor...';
+    btn.disabled = true;
 
-    const result = await checkAccess(code);
+    const result = await startGoogleLogin();
 
-    if (result.allowed) {
+    if (result.success) {
         document.getElementById('loginOverlay').classList.add('hidden');
-        showVisualSuccess("Giriş Başarılı", "Hoşgeldiniz!");
+        showVisualSuccess("Giriş Başarılı", `Hoşgeldin, ${result.user.displayName}`);
     } else {
-        alert(result.reason);
-        btn.innerHTML = 'GİRİŞ YAP';
+        alert("Giriş Başarısız: " + result.error);
+        btn.innerHTML = '<i class="fa-brands fa-google mr-2"></i> GOOGLE İLE GİRİŞ YAP';
+        btn.disabled = false;
     }
 }
 
@@ -1838,19 +1839,26 @@ window.attemptLogin = async function () {
 export async function checkAppAuth() {
     const status = await checkAccess();
 
-    // Eğer Login gerekliyse Overlay'i göster
+    const overlay = document.getElementById('loginOverlay');
+    const infoText = document.getElementById('deviceInfoText');
+
     if (status.status === 'login_required' || status.status === 'banned') {
-        const overlay = document.getElementById('loginOverlay');
         if (overlay) {
             overlay.classList.remove('hidden');
             if (status.status === 'banned') {
-                document.getElementById('loginTitle').innerText = "CİHAZ ENGELLENDİ";
+                document.getElementById('loginTitle').innerText = "HESAP YASAKLANDI";
                 document.getElementById('loginTitle').classList.add('text-red-500');
-                document.getElementById('accessCodeInput').disabled = true;
-                document.getElementById('btnLoginBtn').disabled = true;
-                document.getElementById('deviceInfoText').innerText = "ID: " + getDeviceId();
+                document.getElementById('btnLoginBtn').style.display = 'none'; // Girişi kapat
+                infoText.innerText = "Yönetici ile iletişime geçin.";
+            } else {
+                // Normal giriş ekranı
+                infoText.innerText = "Güvenli Giriş Sistemi v4.0";
             }
         }
+    } else {
+        // Zaten giriş yapmış
+        if (overlay) overlay.classList.add('hidden');
+        console.log("Kullanıcı aktif:", status.user.email);
     }
 }
 

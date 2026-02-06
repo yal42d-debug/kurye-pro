@@ -1,12 +1,23 @@
-
 <!DOCTYPE html>
 <html lang="tr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KuryePro Yönetim Paneli</title>
+    <title>KuryePro - Yönetim Paneli</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- FIREBASE IMPORT MAP -->
+    <script type="importmap">
+      {
+        "imports": {
+          "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
+          "firebase/database": "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js",
+          "firebase/auth": "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"
+        }
+      }
+    </script>
     <script>
         tailwind.config = {
             theme: {
@@ -20,154 +31,188 @@
         }
     </script>
 </head>
-<body class="bg-dark text-white min-h-screen p-6 font-sans">
 
+<body class="bg-dark text-white min-h-screen p-6 font-sans">
     <div class="max-w-4xl mx-auto">
         <!-- Header -->
         <div class="flex justify-between items-center mb-8 border-b border-gray-700 pb-4">
             <div>
-                <h1 class="text-3xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-                    KuryePro Yönetim
+                <h1
+                    class="text-3xl font-bold bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent">
+                    KuryePro Firebase Panel
                 </h1>
-                <p class="text-gray-400 text-sm mt-1">Gelişmiş Cihaz Kontrol Sistemi</p>
+                <p class="text-gray-400 text-sm mt-1">Gelişmiş Bulut Yönetimi</p>
             </div>
-            <div id="statusIndicator" class="hidden px-4 py-2 bg-green-900/30 text-green-400 rounded-full text-xs font-bold border border-green-500/20">
-                <i class="fa-solid fa-cloud-arrow-up mr-2"></i>GitHub ile Senkronize
+            <div id="statusIndicator"
+                class="px-4 py-2 bg-orange-900/30 text-orange-400 rounded-full text-xs font-bold border border-orange-500/20">
+                <i class="fa-solid fa-wifi mr-2"></i>Canlı Bağlantı
             </div>
         </div>
 
-        <!-- Add New Device -->
-        <div class="bg-card rounded-2xl p-6 mb-8 border border-gray-700 shadow-xl">
-            <h2 class="text-lg font-bold mb-4 flex items-center gap-2">
-                <i class="fa-solid fa-plus-circle text-indigo-400"></i> Yeni Cihaz Ekle
-            </h2>
-            <div class="flex gap-4">
-                <input type="text" id="newDeviceId" placeholder="Cihaz Kimliği (UUID) Örn: 123e4567..." 
-                    class="flex-1 bg-dark border border-gray-600 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 transition-colors">
-                <button onclick="addDevice()" 
-                    class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-indigo-500/20">
-                    <i class="fa-solid fa-check mr-2"></i>EKLE
-                </button>
+        <!-- Kullanıcı Listesi -->
+        <div class="bg-card rounded-2xl border border-gray-700 shadow-xl overflow-hidden mb-8">
+            <div class="bg-slate-800/50 p-4 border-b border-gray-700 flex justify-between items-center">
+                <h2 class="font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-users"></i> Kullanıcılar
+                </h2>
+                <span id="userCount"
+                    class="bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded text-xs font-bold">0</span>
             </div>
-            <p class="text-xs text-gray-500 mt-2 ml-1">Kullanıcı "Erişim Engellendi" hatası aldığında size bu kodu gönderecektir.</p>
-        </div>
-
-        <div class="grid md:grid-cols-2 gap-6">
-            <!-- Active Devices -->
-            <div class="bg-card rounded-2xl border border-gray-700 shadow-xl overflow-hidden">
-                <div class="bg-emerald-900/20 p-4 border-b border-gray-700 flex justify-between items-center">
-                    <h2 class="font-bold text-emerald-400 flex items-center gap-2">
-                        <i class="fa-solid fa-shield-check"></i> Aktif Cihazlar
-                    </h2>
-                    <span id="activeCount" class="bg-emerald-500/20 text-emerald-300 px-2 py-1 rounded text-xs font-bold">0</span>
-                </div>
-                <div id="activeList" class="p-4 space-y-3 max-h-[400px] overflow-y-auto">
-                    <!-- JS populate -->
-                </div>
-            </div>
-
-            <!-- Banned Devices -->
-            <div class="bg-card rounded-2xl border border-gray-700 shadow-xl overflow-hidden">
-                <div class="bg-red-900/20 p-4 border-b border-gray-700 flex justify-between items-center">
-                    <h2 class="font-bold text-red-400 flex items-center gap-2">
-                        <i class="fa-solid fa-ban"></i> Yasaklılar
-                    </h2>
-                    <span id="bannedCount" class="bg-red-500/20 text-red-300 px-2 py-1 rounded text-xs font-bold">0</span>
-                </div>
-                <div id="bannedList" class="p-4 space-y-3 max-h-[400px] overflow-y-auto">
-                    <!-- JS populate -->
-                </div>
+            <div class="p-0">
+                <table class="w-full text-left text-sm text-gray-400">
+                    <thead class="bg-slate-900 text-gray-500 uppercase font-bold text-xs">
+                        <tr>
+                            <th class="p-4">Kullanıcı</th>
+                            <th class="p-4">Rol / Durum</th>
+                            <th class="p-4 text-center">Günlük Limit</th>
+                            <th class="p-4 text-right">İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userTableBody" class="divide-y divide-gray-700">
+                        <!-- JS ile dolacak -->
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 
-    <!-- Loading Modal -->
-    <div id="loadingModal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 hidden">
-        <div class="bg-card p-8 rounded-3xl text-center border border-gray-700">
-            <i class="fa-solid fa-circle-notch fa-spin text-4xl text-indigo-500 mb-4"></i>
-            <h3 class="text-xl font-bold">İşleniyor...</h3>
-            <p class="text-gray-400 text-sm mt-2">GitHub güncelleniyor, lütfen bekleyin.</p>
+    <!-- Edit Limit Modal -->
+    <div id="editLimitModal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 hidden">
+        <div class="bg-card p-6 rounded-2xl w-full max-w-sm border border-gray-700">
+            <h3 class="text-lg font-bold mb-4">Sorgu Limiti Düzenle</h3>
+            <input type="number" id="newLimitInput"
+                class="w-full bg-dark border border-gray-600 rounded-xl p-3 mb-4 text-white"
+                placeholder="Yeni Limit (Örn: 50)">
+            <div class="flex gap-2">
+                <button onclick="closeModal()"
+                    class="flex-1 py-3 bg-gray-700 hover:bg-gray-600 rounded-xl font-bold">İptal</button>
+                <button onclick="saveLimit()"
+                    class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold">Kaydet</button>
+            </div>
         </div>
     </div>
 
-    <script>
-        // Verileri Yükle
-        async function loadData() {
-            const res = await fetch('/api/devices');
-            const data = await res.json();
-            render(data);
-        }
+    <script type="module">
+        import { initializeApp } from "firebase/app";
+        import { getDatabase, ref, onValue, update, remove } from "firebase/database";
 
-        function render(data) {
-            // Count
-            document.getElementById('activeCount').innerText = data.active_devices.length;
-            document.getElementById('bannedCount').innerText = data.banned_devices.length;
+        const firebaseConfig = {
+            apiKey: "AIzaSyBfN1-OQUQgQTu358UO6aZ-BDIbjWZq1Mc",
+            authDomain: "kuryeprov44.firebaseapp.com",
+            databaseURL: "https://kuryeprov44-default-rtdb.firebaseio.com",
+            projectId: "kuryeprov44",
+            storageBucket: "kuryeprov44.firebasestorage.app",
+            messagingSenderId: "177653241936",
+            appId: "1:177653241936:web:4130a534c4bf7cb05fd955",
+            measurementId: "G-313RD4XLZW"
+        };
 
-            // Active List
-            const activeContainer = document.getElementById('activeList');
-            if(data.active_devices.length === 0) activeContainer.innerHTML = '<p class="text-gray-500 text-sm text-center italic">Liste boş</p>';
-            else activeContainer.innerHTML = data.active_devices.map(id => `
-                <div class="flex items-center justify-between bg-dark p-3 rounded-lg border border-gray-700 hover:border-gray-500 transition-colors group">
-                    <div class="flex items-center gap-3 overflow-hidden ml-1">
-                        <i class="fa-solid fa-mobile-screen text-gray-500"></i>
-                        <span class="text-sm font-mono text-gray-300 truncate w-32 md:w-48" title="${id}">${id}</span>
-                    </div>
-                    <div class="flex gap-2">
-                        <button onclick="updateStatus('${id}', 'ban')" class="w-8 h-8 rounded-lg bg-red-900/30 text-red-400 hover:bg-red-600 hover:text-white transition-all shadow-lg" title="Yasakla"><i class="fa-solid fa-ban"></i></button>
-                        <button onclick="updateStatus('${id}', 'delete')" class="w-8 h-8 rounded-lg bg-gray-800 text-gray-400 hover:bg-gray-700 transition-all" title="Sil"><i class="fa-solid fa-trash"></i></button>
-                    </div>
-                </div>
-            `).join('');
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
 
-            // Banned List
-            const bannedContainer = document.getElementById('bannedList');
-            if(data.banned_devices.length === 0) bannedContainer.innerHTML = '<p class="text-gray-500 text-sm text-center italic">Liste boş</p>';
-            else bannedContainer.innerHTML = data.banned_devices.map(id => `
-                <div class="flex items-center justify-between bg-dark p-3 rounded-lg border border-red-900/30 group">
-                    <div class="flex items-center gap-3 overflow-hidden ml-1">
-                        <i class="fa-solid fa-user-slash text-red-500"></i>
-                        <span class="text-sm font-mono text-gray-400 truncate w-32 md:w-48 line-through decoration-red-500/50" title="${id}">${id}</span>
-                    </div>
-                    <div class="flex gap-2">
-                        <button onclick="updateStatus('${id}', 'allow')" class="w-8 h-8 rounded-lg bg-emerald-900/30 text-emerald-400 hover:bg-emerald-600 hover:text-white transition-all shadow-lg" title="Affet"><i class="fa-solid fa-rotate-left"></i></button>
-                        <button onclick="updateStatus('${id}', 'delete')" class="w-8 h-8 rounded-lg bg-gray-800 text-gray-400 hover:bg-gray-700 transition-all" title="Sil"><i class="fa-solid fa-trash"></i></button>
-                    </div>
-                </div>
-            `).join('');
-        }
+        let currentUserList = {};
+        let selectedUserId = null;
 
-        async function updateStatus(deviceId, action) {
-            showLoading(true);
-            try {
-                const res = await fetch('/api/update', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ action, deviceId })
-                });
-                const result = await res.json();
-                if(result.success) render(result.data);
-                else alert('Hata: ' + result.error);
-            } catch(e) {
-                alert('Bağlantı Hatası');
+        // Gerçek Zamanlı Dinleyici
+        const usersRef = ref(db, 'users');
+        onValue(usersRef, (snapshot) => {
+            const data = snapshot.val();
+            currentUserList = data || {};
+            renderList(currentUserList);
+        });
+
+        function renderList(users) {
+            const tbody = document.getElementById('userTableBody');
+            const userArray = Object.entries(users).sort((a, b) => new Date(b[1].lastLogin) - new Date(a[1].lastLogin));
+
+            document.getElementById('userCount').innerText = userArray.length;
+
+            if (userArray.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="p-8 text-center italic">Henüz kayıtlı kullanıcı yok.</td></tr>';
+                return;
             }
-            showLoading(false);
+
+            tbody.innerHTML = userArray.map(([uid, user]) => {
+                const isBanned = user.isBanned === true;
+                const roleBadge = user.role === 'admin'
+                    ? '<span class="bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded text-[10px] font-bold border border-indigo-500/30">ADMIN</span>'
+                    : '<span class="bg-gray-700/50 text-gray-400 px-2 py-0.5 rounded text-[10px]">USER</span>';
+
+                const statusBadge = isBanned
+                    ? '<span class="bg-red-900/50 text-red-400 px-2 py-0.5 rounded text-[10px] font-bold border border-red-500/30 ml-2">YASAKLI</span>'
+                    : '<span class="bg-emerald-900/30 text-emerald-400 px-2 py-0.5 rounded text-[10px] font-bold ml-2">AKTİF</span>';
+
+                return `
+                <tr class="hover:bg-slate-800/50 transition-colors group">
+                    <td class="p-4">
+                        <div class="flex items-center gap-3">
+                            <img src="${user.photoURL || 'https://via.placeholder.com/40'}" class="w-10 h-10 rounded-full border border-gray-600">
+                            <div>
+                                <div class="font-bold text-white flex items-center gap-2">${user.displayName || 'İsimsiz'} ${roleBadge}</div>
+                                <div class="text-xs text-gray-500">${user.email}</div>
+                                <div class="text-[10px] text-gray-600 mt-0.5 font-mono">Son: ${new Date(user.lastLogin).toLocaleString('tr-TR')}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="p-4">
+                        ${statusBadge}
+                    </td>
+                    <td class="p-4 text-center">
+                        <button onclick="window.openLimitModal('${uid}', ${user.dailyLimit || 0})" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 px-3 py-1 rounded-lg text-xs font-mono transition-colors">
+                            ${user.dailyLimit || 'Sınırsız'}
+                        </button>
+                    </td>
+                    <td class="p-4 text-right">
+                        <div class="flex justify-end gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
+                            ${isBanned
+                        ? `<button onclick="window.toggleBan('${uid}', false)" class="p-2 bg-emerald-900/30 text-emerald-400 rounded-lg hover:bg-emerald-600 hover:text-white transition-all" title="Yasağı Kaldır"><i class="fa-solid fa-rotate-left"></i></button>`
+                        : `<button onclick="window.toggleBan('${uid}', true)" class="p-2 bg-red-900/30 text-red-400 rounded-lg hover:bg-red-600 hover:text-white transition-all" title="Yasakla"><i class="fa-solid fa-ban"></i></button>`
+                    }
+                            <button onclick="window.makeAdmin('${uid}')" class="p-2 bg-indigo-900/30 text-indigo-400 rounded-lg hover:bg-indigo-600 hover:text-white transition-all" title="Admin Yap"><i class="fa-solid fa-crown"></i></button>
+                            <button onclick="window.deleteUser('${uid}')" class="p-2 bg-gray-800 text-gray-500 rounded-lg hover:bg-red-600 hover:text-white transition-all" title="Sil"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </td>
+                </tr>
+                `;
+            }).join('');
         }
 
-        function addDevice() {
-            const id = document.getElementById('newDeviceId').value.trim();
-            if(!id) return alert("Lütfen kod giriniz.");
-            updateStatus(id, 'add');
-            document.getElementById('newDeviceId').value = '';
-        }
+        // Global Fonksiyonlar (Module Scope Dışına Taşıma)
+        window.toggleBan = (uid, banStatus) => {
+            if (!confirm(banStatus ? "Kullanıcıyı yasaklamak istiyor musunuz?" : "Yasağı kaldırmak istiyor musunuz?")) return;
+            update(ref(db, 'users/' + uid), { isBanned: banStatus });
+        };
 
-        function showLoading(show) {
-            const modal = document.getElementById('loadingModal');
-            if(show) modal.classList.remove('hidden');
-            else modal.classList.add('hidden');
-        }
+        window.makeAdmin = (uid) => {
+            if (!confirm("Kullanıcıyı yönetici yapmak istiyor musunuz?")) return;
+            update(ref(db, 'users/' + uid), { role: 'admin' });
+        };
 
-        // Başlangıç
-        loadData();
+        window.deleteUser = (uid) => {
+            if (!confirm("Kullanıcıyı VERİTABANINDAN SİLMEK istiyor musunuz? Bu işlem geri alınamaz.")) return;
+            remove(ref(db, 'users/' + uid));
+        };
+
+        window.openLimitModal = (uid, currentLimit) => {
+            selectedUserId = uid;
+            document.getElementById('newLimitInput').value = currentLimit;
+            document.getElementById('editLimitModal').classList.remove('hidden');
+        };
+
+        window.saveLimit = () => {
+            const val = parseInt(document.getElementById('newLimitInput').value);
+            if (selectedUserId && !isNaN(val)) {
+                update(ref(db, 'users/' + selectedUserId), { dailyLimit: val });
+                closeModal();
+            }
+        };
+
+        window.closeModal = () => {
+            selectedUserId = null;
+            document.getElementById('editLimitModal').classList.add('hidden');
+        };
+
     </script>
 </body>
+
 </html>
