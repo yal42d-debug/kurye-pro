@@ -1,5 +1,5 @@
 
-import { loginWithGoogle, checkUserStatus, logoutUser, auth } from './firebase';
+import { loginWithGoogle, handleRedirectResult, checkUserStatus, logoutUser, auth } from './firebase';
 
 // Mevcut şifreli veri adresi
 const REPO_USER = 'yal42d-debug';
@@ -8,6 +8,13 @@ const BASE_URL = `https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/ma
 
 // 1. Erişim Kontrolü
 export async function checkAccess() {
+    // 1. Önce Redirect sonucunu kontrol et (Dönüşte veri var mı?)
+    const redirectRes = await handleRedirectResult();
+    if (redirectRes && redirectRes.success) {
+        // Redirect başarılı, birazdan onAuthStateChanged tetiklenecek
+    }
+
+    // 2. Auth Durumunu Bekle
     return new Promise((resolve) => {
         const unsubscribe = auth.onAuthStateChanged(async (user) => {
             unsubscribe();

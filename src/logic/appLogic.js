@@ -1825,11 +1825,19 @@ window.attemptLogin = async function () {
 
     const result = await startGoogleLogin();
 
+    if (result.type === 'redirect') {
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Yönlendiriliyor...';
+        return;
+    }
+
     if (result.success) {
         document.getElementById('loginOverlay').classList.add('hidden');
         showVisualSuccess("Giriş Başarılı", `Hoşgeldin, ${result.user.displayName}`);
     } else {
-        alert("Giriş Başarısız: " + result.error);
+        // Redirect hatası değilse hata göster
+        if (result.error && !result.error.includes('auth/popup-blocked')) {
+            alert("Giriş Başarısız: " + result.error);
+        }
         btn.innerHTML = '<i class="fa-brands fa-google mr-2"></i> GOOGLE İLE GİRİŞ YAP';
         btn.disabled = false;
     }

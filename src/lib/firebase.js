@@ -1,6 +1,6 @@
 
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut } from "firebase/auth";
 import { getDatabase, ref, set, get, update } from "firebase/database";
 
 const firebaseConfig = {
@@ -19,24 +19,48 @@ const auth = getAuth(app);
 const db = getDatabase(app);
 const provider = new GoogleAuthProvider();
 
-// 2. Google ile Giriş Yap (POPUP - Hızlı Versiyon)
+// 2. Google ile Giriş Yap (MOBİL UYUMLU REDIRECT)
 export async function loginWithGoogle() {
     try {
-        const result = await signInWithPopup(auth, provider);
-        const user = result.user;
+        // Mobilde Redirect Kullan (Daha güvenli ve hatasız)
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-        // Non-blocking: Kaydı arka planda yap, kullanıcıyı bekletme
-        saveUserToDB(user).catch(console.error);
-
-        return { success: true, user: user };
+        if (isMobile) {
+            await signInWithRedirect(auth, provider);
+            return { type: 'redirect' };
+        } else {
+            // Masaüstünde Popup deneyebiliriz ama hata verirse Redirect'e düşeriz
+            try {
+                const result = await signInWithPopup(auth, provider);
+                saveUserToDB(result.user).catch(console.error);
+                return { success: true, user: result.user };
+            } catch (popupErr) {
+                console.warn("Popup blocked/failed, trying redirect...", popupErr);
+                await signInWithRedirect(auth, provider);
+                return { type: 'redirect' };
+            }
+        }
     } catch (error) {
         console.error("Login Error:", error);
         return { success: false, error: error.message };
     }
 }
 
-// Redirect Handler (Boş - Hata vermemesi için)
-export async function handleRedirectResult() { return null; }
+// Redirect Sonucunu Yakala
+export async function handleRedirectResult() {
+    try {
+        const result = await getRedirectResult(auth);
+        if (result && result.user) {
+            console.log("Redirect Login Başarılı:", result.user.email);
+            saveUserToDB(result.user).catch(console.error);
+            return { success: true, user: result.user };
+        }
+        return null;
+    } catch (error) {
+        console.error("Redirect Error:", error);
+        return { success: false, error: error.message };
+    }
+}
 
 export async function logoutUser() {
     await signOut(auth);
