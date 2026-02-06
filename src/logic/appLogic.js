@@ -1810,8 +1810,27 @@ let addressData = null;
 async function ensureAddressData() {
     if (addressData) return;
     try {
-        const mod = await import('../data/addressData.json');
-        addressData = mod.default || mod;
+        if (!addressData) {
+            try {
+                const mod = await import('../data/addressDataEncrypted.js');
+                const raw = mod.encryptedData;
+
+                if (raw.startsWith('KRYSEC_')) {
+                    const base64 = raw.replace('KRYSEC_', '').split('').reverse().join('');
+
+                    // Browser environment decoding
+                    const jsonStr = decodeURIComponent(escape(window.atob(base64)));
+                    addressData = JSON.parse(jsonStr);
+
+                } else {
+                    console.error('Invalid encrypted data format');
+                    addressData = {};
+                }
+            } catch (err) {
+                console.error('Failed to load address data:', err);
+                addressData = {};
+            }
+        }
     } catch (err) {
         console.error('Adres verisi yüklenemedi:', err);
     }
