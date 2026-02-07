@@ -1,3 +1,6 @@
+//noinspection SpellCheckingInspection
+// cspell:disable
+/* global L */
 import { getBonusForMode, getDailyBonus, getKmPrice } from '../lib/calculations';
 import { fetchSecureData, startGoogleLogin, checkAccess } from '../lib/security';
 
@@ -1270,9 +1273,6 @@ function deleteNote(idx) {
         renderCalendar();
     }
 }
-function updateActivityBoard() {
-    document.getElementById('todayActivities').innerHTML = '<div class="text-center text-[10px] text-gray-600 py-2">Bugün için plan yok.</div>';
-}
 
 // --- HELPER FUNCTIONS ---
 function loadAccountData() { /* Placeholder if needed for migration */ }
@@ -1385,22 +1385,7 @@ function clearTransactionHistory() { transactionHistory = []; localStorage.remov
 function resetPriceDefaults() { if (confirm("Varsayılan fiyatlara dönülsün mü?")) { prices = { single: 110, multi: 40, avm: 10, night: 20 }; savePriceSettings(); loadPrices(); } }
 
 // Placeholder external links
-function makroTetikle() { console.log('Makro'); }
 function posTetikle() { console.log('POS'); }
-
-// --- NEW: ADVANCED DATE CALCULATION LOGIC ---
-function calculateRealPaymentDate(date = new Date()) {
-    const current = new Date(date);
-    const day = current.getDay(); // 0: Sunday
-    // Calculate end of work week (Sunday)
-    const daysUntilSunday = day === 0 ? 0 : 7 - day;
-    const endOfWeek = new Date(current);
-    endOfWeek.setDate(current.getDate() + daysUntilSunday);
-    // Rule: Payment is 10 days after work week ends (which is a Wednesday)
-    const paymentDate = new Date(endOfWeek);
-    paymentDate.setDate(endOfWeek.getDate() + 10);
-    return paymentDate;
-}
 
 function changeSimulationDays(amount) {
     simulationDays += amount;
@@ -1657,6 +1642,26 @@ async function quickSearchAddress(query) {
         return;
     }
 
+    // --- LIMIT CHECK ---
+    try {
+        let firebaseLib;
+        try { firebaseLib = await import('../lib/firebase.js'); } catch (e) { console.error(e); }
+
+        if (firebaseLib && firebaseLib.hasRemainingLimit) {
+            const status = await firebaseLib.hasRemainingLimit();
+            if (!status.allowed) {
+                resultsDiv.innerHTML = `<div class="p-3 text-red-500 text-sm text-center font-bold">
+                                            <i class="fa-solid fa-lock mb-2"></i><br>
+                                            GÜNLÜK SORGU LİMİTİ DOLDU<br>
+                                            <span class="text-xs text-gray-400 font-normal">Yarın tekrar deneyin.</span>
+                                         </div>`;
+                resultsDiv.classList.remove('hidden');
+                return;
+            }
+        }
+    } catch (err) { console.error("Limit check fail", err); }
+    // -------------------
+
     await ensureAddressData();
     if (!addressData) return;
 
@@ -1769,8 +1774,21 @@ async function quickSearchAddress(query) {
     resultsDiv.classList.remove('hidden');
 }
 
+async function selectQuickResult(result) {
+    // --- INCREMENT LIMIT ONLY ON SELECTION ---
+    try {
+        const firebaseLib = await import('../lib/firebase.js');
+        if (firebaseLib && firebaseLib.incrementLimitUsage) {
+            const success = await firebaseLib.incrementLimitUsage();
+            if (!success) {
+                showVisualSuccess("Hata", "Limit doldu, işlem yapılamaz.");
+                document.getElementById('quickSearchResults').classList.add('hidden');
+                return;
+            }
+        }
+    } catch (e) { console.warn("Increment failed", e); }
+    // -----------------------------------------
 
-function selectQuickResult(result) {
     document.getElementById('quickSearchResults').classList.add('hidden');
     document.getElementById('quickAddressSearch').value = result.text;
 
@@ -1817,13 +1835,14 @@ let addressData = null;
 // (Import moved to top)
 
 // Global Login Fonksiyonu
-window.attemptLogin = async function () {
+window.attemptLogin = async function (options = {}) {
     const btn = document.getElementById('btnLoginBtn');
+    const isAuto = options?.auto === true;
 
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Google ile Bağlanılıyor...';
     btn.disabled = true;
 
-    const result = await startGoogleLogin();
+    const result = await startGoogleLogin(options);
 
     if (result.type === 'redirect' || result.type === 'external_browser') {
         btn.innerHTML = '<i class="fa-solid fa-external-link-alt mr-2"></i> Tarayıcıda Giriş Yap';
@@ -1839,7 +1858,7 @@ window.attemptLogin = async function () {
         document.getElementById('loginOverlay').classList.add('hidden');
         showVisualSuccess("Giriş Başarılı", `Hoşgeldin, ${result.user.displayName}`);
     } else {
-        if (result.error && !result.error.includes('auth/popup-blocked')) {
+        if (!isAuto && result.error && !result.error.includes('auth/popup-blocked')) {
             alert("Giriş Başarısız: " + result.error);
         }
         btn.innerHTML = '<i class="fa-brands fa-google mr-2"></i> GOOGLE İLE GİRİŞ YAP';
@@ -1851,6 +1870,16 @@ window.attemptLogin = async function () {
 export async function checkAppAuth() {
     const infoText = document.getElementById('deviceInfoText');
     if (infoText) infoText.innerText = "Yükleniyor...";
+
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('mode') === 'login') {
+        if (typeof window.attemptLogin === 'function') {
+            window.attemptLogin({ auto: true });
+        } else {
+            startGoogleLogin({ auto: true }).catch(console.error);
+        }
+        return;
+    }
 
     const status = await checkAccess();
 
@@ -2060,7 +2089,6 @@ async function ensureAddressData() {
 
     } catch (err) {
         console.error('Erişim Hatası:', err);
-        const deviceId = getDeviceId();
         alert(`⛔ ERİŞİM ENGELLENDİ\n\nSebep: ${err.message}\n\nEğer giriş yapmadıysanız uygulamayı yeniden başlatıp giriş kodunu giriniz.`);
 
         const statusEl = document.getElementById('updateStatus');

@@ -6,6 +6,11 @@
     "CapacitorUpdater": {
       "autoUpdate": false,
       "resetWhenUpdate": false
+    },
+    "FirebaseAuthentication": {
+      "providers": [
+        "google.com"
+      ]
     }
   }
 }

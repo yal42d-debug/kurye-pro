@@ -1,6 +1,7 @@
 {
   "name": "kurye-pro",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -10,13 +11,14 @@
   "dependencies": {
     "@capacitor-firebase/authentication": "^6.3.1",
     "@capacitor/android": "^6.2.1",
+    "@capacitor/app": "^6.0.3",
     "@capacitor/browser": "^6.0.6",
     "@capacitor/cli": "^6.2.1",
     "@capacitor/core": "^6.2.1",
     "@capgo/capacitor-updater": "^6.42.9",
     "body-parser": "^2.2.2",
     "express": "^5.2.1",
-    "firebase": "^12.9.0",
+    "firebase": "^11.0.1",
     "open": "^11.0.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

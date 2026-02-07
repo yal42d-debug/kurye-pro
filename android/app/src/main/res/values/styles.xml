@@ -15,8 +15,15 @@
         <item name="android:background">@null</item>
     </style>
 
-
+    <!-- Correct Splash Screen Theme Configuration -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
-        <item name="android:background">@drawable/splash</item>
+        <!-- Background color of the splash screen -->
+        <item name="windowSplashScreenBackground">@color/background</item>
+        <!-- Use the splash image as the animated icon (mandatory field, can be static) -->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash</item>
+        <!-- Stay on screen for a moment -->
+        <item name="windowSplashScreenAnimationDuration">500</item>
+        <!-- CRITICAL: Theme to switch to after splash -->
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
     </style>
 </resources>

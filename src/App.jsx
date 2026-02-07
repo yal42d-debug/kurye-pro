@@ -1,57 +1,87 @@
 import { useEffect } from 'react';
 import appHtml from './templates/app.html?raw';
 import { bindAppGlobals, initApp, setBodyClass } from './logic/appLogic';
-
+import { Capacitor } from '@capacitor/core';
 import { CapacitorUpdater } from '@capgo/capacitor-updater';
 
 function App() {
   useEffect(() => {
     bindAppGlobals();
     setBodyClass();
-    initApp();
 
-    // Notify native layer that the app has loaded successfully.
-    // This is required for updates to be kept.
-    CapacitorUpdater.notifyAppReady();
+    // 1. Initialize App Logic
+    try {
+      initApp();
+    } catch (e) {
+      console.error("Critical: Init App Failed", e);
+    }
 
-    // Auto Update Logic
-    const checkUpdates = async () => {
+    const startUpdater = async () => {
+      if (!Capacitor.isNativePlatform()) return;
+
+      // Notify the native plugin that the app is ready (Prevents rollback)
       try {
-        const repoUser = 'yal42d-debug';
-        const repoName = 'kurye_pro';
-        const versionUrl = `https://raw.githubusercontent.com/${repoUser}/${repoName}/main/updates/version.json`;
+        await CapacitorUpdater.notifyAppReady();
+      } catch (err) {
+        console.warn('CapacitorUpdater.notifyAppReady failed (Offline or Plugin missing?)', err);
+      }
 
-        const res = await fetch(versionUrl);
-        if (!res.ok) return;
-        const data = await res.json();
+      const checkUpdates = async () => {
+        try {
+          // GitHub Raw URL for Version Check
+          const repoUser = 'yal42d-debug';
+          const repoName = 'kurye_pro';
+          const branch = 'main';
+          const versionUrl = `https://raw.githubusercontent.com/${repoUser}/${repoName}/${branch}/updates/version.json?t=${Date.now()}`;
 
-        // Mevcut sürümü localStorage'dan veya config'den alabiliriz. 
-        // Şimdilik basitçe: sunucudaki version timestamp'i farklıysa indir diyelim.
-        const lastVersion = localStorage.getItem('app_version_code');
+          console.log(`Checking updates from: ${versionUrl}`);
 
-        if (data.version !== lastVersion) {
-          console.log('Yeni güncelleme bulundu:', data.version);
-          // İndirme başlıyor toast mesajı gösterilebilir
+          // Network Fetch with Timeout
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+          const res = await fetch(versionUrl, { cache: 'no-store', signal: controller.signal });
+          clearTimeout(timeoutId);
 
-          const downloadUrl = `https://github.com/${repoUser}/${repoName}/raw/main/updates/dist.zip`;
+          if (!res.ok) {
+            console.warn(`Update check failed: Server responded with ${res.status}`);
+            return;
+          }
 
-          const version = await CapacitorUpdater.download({
+          const data = await res.json();
+          if (!data?.version) {
+            console.warn('Invalid update JSON: missing version');
+            return;
+          }
+
+          const lastVersion = localStorage.getItem('app_version_code');
+          console.log(`Current: ${lastVersion}, Cloud: ${data.version}`);
+
+          if (data.version === lastVersion) return;
+
+          // Download Update
+          const downloadUrl = data.url || `https://raw.githubusercontent.com/${repoUser}/${repoName}/${branch}/updates/dist.zip`;
+          console.log(`Downloading update: ${downloadUrl}`);
+
+          const bundle = await CapacitorUpdater.download({
             url: downloadUrl,
             version: data.version,
           });
 
-          // İndirme bitti, uygula
-          await CapacitorUpdater.set(version);
-
+          // Apply Update
+          console.log('Update downloaded. Applying...');
           localStorage.setItem('app_version_code', data.version);
+          await CapacitorUpdater.set(bundle);
+
+        } catch (err) {
+          console.error('Auto-Update Error:', err);
         }
-      } catch (err) {
-        console.error('Update check failed', err);
-      }
+      };
+
+      // 5 saniye sonra güncelleme kontrolü yap
+      setTimeout(checkUpdates, 5000);
     };
 
-    // 5 saniye sonra güncelleme kontrolü yap (uygulama açılışını yavaşlatmasın)
-    setTimeout(checkUpdates, 5000);
+    startUpdater();
   }, []);
 
   return <div id="app-root" dangerouslySetInnerHTML={{ __html: appHtml }} />;

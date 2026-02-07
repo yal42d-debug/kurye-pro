@@ -8,13 +8,21 @@ const BASE_URL = `https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/ma
 
 // 1. Erişim Kontrolü
 export async function checkAccess() {
-    // 1. Önce Redirect sonucunu kontrol et (Dönüşte veri var mı?)
-    const redirectRes = await handleRedirectResult();
-    if (redirectRes && redirectRes.success) {
-        // Redirect başarılı, birazdan onAuthStateChanged tetiklenecek
+    await handleRedirectResult();
+
+    // Önce localStorage'dan kontrol et (Deep link ile giriş yapıldıysa)
+    const storedUid = localStorage.getItem('firebase_uid');
+    if (storedUid) {
+        const status = await checkUserStatus(storedUid);
+        if (status.allowed) {
+            return { allowed: true, user: status.data, status: 'authorized' };
+        } else if (status.status === 'banned') {
+            await logoutUser();
+            return { allowed: false, reason: status.reason, status: 'banned' };
+        }
     }
 
-    // 2. Auth Durumunu Bekle
+    // Firebase Auth Durumunu da kontrol et
     return new Promise((resolve) => {
         const unsubscribe = auth.onAuthStateChanged(async (user) => {
             unsubscribe();
@@ -35,8 +43,8 @@ export async function checkAccess() {
 }
 
 // 2. Google Login Tetikleyici
-export async function startGoogleLogin() {
-    return await loginWithGoogle();
+export async function startGoogleLogin(options = {}) {
+    return await loginWithGoogle(options);
 }
 
 // 3. Veriyi Çek
