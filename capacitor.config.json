@@ -3,10 +3,6 @@
   "appName": "KuryePro",
   "webDir": "www",
   "plugins": {
-    "CapacitorUpdater": {
-      "autoUpdate": false,
-      "resetWhenUpdate": false
-    },
     "FirebaseAuthentication": {
       "providers": [
         "google.com"
