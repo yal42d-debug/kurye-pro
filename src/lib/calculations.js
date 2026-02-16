@@ -23,11 +23,10 @@ export function getBonusForMode(packetCount, tiers, mode) {
   return bonus;
 }
 
-export function getKmPrice(dist) {
+export function getKmRate(dist) {
   if (!dist || dist === 0) return 0;
-  if (dist <= 3) return 5;
-  if (dist <= 5) return 6;
-  if (dist <= 7) return 7;
-  if (dist <= 8) return 8;
-  return dist;
+  if (dist <= 3) return 5; // 0-3 KM -> 5 TL
+  if (dist <= 5) return 6; // 3-5 KM -> 6 TL
+  if (dist <= 7) return 7; // 5-7 KM -> 7 TL
+  return 8;                // 7+ KM -> 8 TL
 }

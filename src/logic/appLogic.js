@@ -831,15 +831,16 @@ function calculateProfit() {
         const n = parseFloat(document.getElementById('night').value) || 0;
         const avgKm = parseFloat(document.getElementById('avgKmProfit').value) || 0;
 
-        const kmPrice = getKmPrice(avgKm);
+        const kmRate = getKmRate(avgKm);
         if (avgKm > 0) {
             document.getElementById('profitKmInfo').style.display = 'block';
-            document.getElementById('profitKmRate').innerText = kmPrice;
+            document.getElementById('profitKmRate').innerText = `${kmRate} TL/km`;
         } else document.getElementById('profitKmInfo').style.display = 'none';
 
         const totalPackets = s + m;
-        const kmIncome = totalPackets * kmPrice;
+        const kmIncome = totalPackets * avgKm * kmRate;
         const baseIncome = (s * prices.single) + (m * prices.multi);
+
         const extraIncome = (a * prices.avm) + (n * prices.night) + kmIncome;
         const fixedDailyIncome = baseIncome + extraIncome;
 
@@ -984,8 +985,8 @@ function updateEarningCalculation() {
     const totalPackets = singleCount + multiCount;
     const avgKm = parseFloat(document.getElementById('avgKmInput')?.value) || 0;
     if (avgKm) localStorage.setItem('kurye_avg_km_perf', avgKm);
-    const kmPrice = getKmPrice(avgKm);
-    const earnKm = totalPackets * kmPrice;
+    const kmRate = getKmRate(avgKm);
+    const earnKm = totalPackets * avgKm * kmRate;
     const earnS = singleCount * prices.single;
     const earnM = multiCount * prices.multi;
     const bonusData = getDailyBonus(totalPackets, dailyBonusTiers, activeDayMode);
@@ -1004,7 +1005,7 @@ function updateEarningCalculation() {
     document.getElementById('multiCountDisplay').innerText = multiCount;
     document.getElementById('earnSingle').innerText = earnS + " ₺";
     document.getElementById('earnMulti').innerText = earnM + " ₺";
-    document.getElementById('kmUnitPriceDisp').innerText = kmPrice;
+    document.getElementById('kmUnitPriceDisp').innerText = kmRate + " TL/Km";
     document.getElementById('perfKmEarnings').innerText = earnKm.toFixed(0) + " ₺";
     document.getElementById('earnBonus').innerText = earnBonus + " ₺";
     document.getElementById('totalEarning').innerText = totalEarn.toLocaleString('tr-TR') + " ₺";
