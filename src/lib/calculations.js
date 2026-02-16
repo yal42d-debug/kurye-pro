@@ -28,5 +28,6 @@ export function getKmPrice(dist) {
   if (dist <= 3) return 5;
   if (dist <= 5) return 6;
   if (dist <= 7) return 7;
-  return 8;
+  if (dist <= 8) return 8;
+  return dist;
 }
