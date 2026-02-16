@@ -15,6 +15,7 @@ function App() {
       initApp();
     } catch (e) {
       console.error("Critical: Init App Failed", e);
+      alert("App Init Error: " + e.message + "\n" + e.stack);
     }
 
     // 2. Simple Version Check (No Plugin Required)
