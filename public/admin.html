@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KuryePro Yönetim Paneli</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --bg-dark: #1e293b;
+            --bg-light: #f1f5f9;
+            --text-main: #334155;
+            --border: #e2e8f0;
+            --success: #10b981;
+            --danger: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        body {
+            display: flex;
+            height: 100vh;
+            background: var(--bg-light);
+            color: var(--text-main);
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 260px;
+            background: var(--bg-dark);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            flex-shrink: 0;
+        }
+
+        .sidebar h1 {
+            font-size: 1.4rem;
+            margin-bottom: 2rem;
+            color: #60a5fa;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-link {
+            padding: 12px 15px;
+            color: #94a3b8;
+            border-radius: 8px;
+            margin-bottom: 5px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover,
+        .nav-link.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .user-info {
+            margin-top: auto;
+            border-top: 1px solid #334155;
+            padding-top: 20px;
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
+
+        .logout-btn {
+            background: none;
+            border: 1px solid #475569;
+            color: white;
+            padding: 8px;
+            width: 100%;
+            border-radius: 6px;
+            margin-top: 10px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .logout-btn:hover {
+            background: #334155;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            background: white;
+            padding: 0 30px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 70px;
+            flex-shrink: 0;
+        }
+
+        .page-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-outline {
+            border: 1px solid var(--border);
+            background: white;
+            color: var(--text-main);
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .content {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+
+        .card-label {
+            font-size: 0.9rem;
+            color: #64748b;
+            margin-bottom: 5px;
+        }
+
+        .card-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .table-wrapper {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+        }
+
+        .toolbar {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .search-input {
+            flex: 1;
+            max-width: 300px;
+            padding: 10px 15px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            outline: none;
+        }
+
+        .search-input:focus {
+            border-color: var(--primary);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            padding: 15px 20px;
+            background: #f8fafc;
+            color: #64748b;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border);
+            font-weight: 600;
+        }
+
+        td {
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.95rem;
+            vertical-align: middle;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover {
+            background: #f8fafc;
+        }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            display: inline-block;
+        }
+
+        .badge-blue {
+            background: #eff6ff;
+            color: #2563eb;
+        }
+
+        .badge-gray {
+            background: #f1f5f9;
+            color: #64748b;
+        }
+
+        .badge-green {
+            background: #ecfdf5;
+            color: #10b981;
+        }
+
+        .badge-red {
+            background: #fef2f2;
+            color: #ef4444;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(2px);
+        }
+
+        .modal {
+            background: white;
+            width: 500px;
+            max-width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-title {
+            font-size: 1.4rem;
+            margin-bottom: 25px;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: #475569;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            outline: none;
+            transition: 0.2s;
+        }
+
+        .form-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .form-helper {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            margin-top: 5px;
+        }
+
+        .region-select-container {
+            max-height: 150px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .checkbox-item:hover {
+            background: #f8fafc;
+        }
+
+        input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--primary);
+            cursor: pointer;
+        }
+
+        .modal-footer {
+            margin-top: 30px;
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="loading" class="loading-overlay hidden">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- DEBUG AREA -->
+    <div id="debugArea"
+        style="position:fixed; bottom:0; left:0; width:100%; height:150px; background:rgba(0,0,0,0.9); color:#0f0; font-family:monospace; font-size:12px; overflow-y:auto; padding:10px; z-index:9999; border-top:2px solid #0f0;">
+        <div style="display:flex; justify-content:space-between; border-bottom:1px solid #333; margin-bottom:5px;">
+            <strong>DEBUG KONSOLU</strong>
+            <button onclick="document.getElementById('debugArea').style.display='none'"
+                style="background:red; color:white; border:none; padding:2px 5px; cursor:pointer;">Kapat</button>
+        </div>
+        <div id="debugLog">Loglar bekleniyor...</div>
+    </div>
+
+    <div class="sidebar">
+        <h1><i class="fa-solid fa-map-location-dot"></i> KuryePro</h1>
+        <button class="nav-link active" onclick="switchTab('users')" id="btn-users"><i class="fa-solid fa-users"></i>
+            Kullanıcılar</button>
+        <button class="nav-link" onclick="switchTab('regions')" id="btn-regions"><i class="fa-solid fa-map"></i>
+            Bölgeler</button>
+
+        <button class="nav-link" onclick="switchTab('settings')" id="btn-settings"><i class="fa-solid fa-gear"></i>
+            Ayarlar</button>
+        <div class="user-info">
+            <div id="adminEmail" style="font-weight:500; color:white; margin-bottom:5px;">Giriş Bekleniyor...</div>
+            <div style="font-size:0.8rem;">Yönetici Paneli v3.0 (GÜNCEL)</div>
+            <button class="logout-btn" onclick="logout()"><i class="fa-solid fa-arrow-right-from-bracket"></i> Çıkış
+                Yap</button>
+        </div>
+    </div>
+    <div class="main-content">
+        <div class="header">
+            <div class="page-title" id="pageTitle">Kullanıcı Yönetimi</div>
+            <div class="action-area">
+                <button id="loginBtn" class="btn btn-primary" onclick="login()"><i class="fa-brands fa-google"></i>
+                    Giriş Yap</button>
+            </div>
+        </div>
+        <div class="content">
+            <div id="tab-users">
+                <div class="stats-grid">
+                    <div class="card">
+                        <div class="card-label">Toplam Kullanıcı</div>
+                        <div class="card-value" id="totalUsers">0</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-label">Yasaklı</div>
+                        <div class="card-value" style="color:var(--danger)" id="bannedUsers">0</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-label">Aktif Bölgeler</div>
+                        <div class="card-value" id="totalRegions">0</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-label">Toplam Sorgu</div>
+                        <div class="card-value" style="color: var(--success)" id="totalQueries">0</div>
+                    </div>
+                </div>
+                <div class="table-wrapper">
+                    <div class="toolbar">
+                        <i class="fa-solid fa-search" style="color:#94a3b8"></i>
+                        <input type="text" id="userSearch" class="search-input" placeholder="Kullanıcı ara...">
+                        <div style="flex:1"></div>
+                        <button class="btn btn-outline" onclick="loadDataFromDB(true)"><i
+                                class="fa-solid fa-rotate-right"></i> Yenile</button>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Kullanıcı</th>
+                                <th>Rol & Durum</th>
+                                <th>Limitler (S/G)</th>
+                                <th>Sorgu & Bölgeler</th>
+                                <th style="text-align:right">İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersList"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="tab-regions" class="hidden">
+                <div class="stats-grid">
+                    <div class="card" style="grid-column: span 3;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <h3 style="font-size:1.2rem; font-weight:600; margin-bottom:5px;">Bölge Yönetimi</h3>
+                                <p style="color:#64748b; font-size:0.9rem;">Sisteme yeni harita veri setleri ekleyin
+                                    veya mevcutları düzenleyin.</p>
+                            </div>
+                            <div style="display:flex; gap:10px;">
+                                <button class="btn btn-outline" onclick="migrateLegacyData()"><i
+                                        class="fa-solid fa-file-import"></i> Eski Veriyi Al (Real AVM)</button>
+                                <button class="btn btn-success" onclick="openRegionModal()"><i
+                                        class="fa-solid fa-plus"></i> Yeni Bölge Ekle</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-wrapper">
+                    <table id="regionsTable">
+                        <thead>
+                            <tr>
+                                <th>Bölge Adı</th>
+                                <th>Veri Boyutu</th>
+                                <th>Durum</th>
+                                <th style="text-align:right">İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody id="regionsList">
+                            <tr>
+                                <td colspan="4" style="text-align:center; padding:30px;">Bölge verisi bulunamadı.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="tab-settings" class="hidden">
+                <div class="card" style="max-width: 600px;">
+                    <div class="modal-title">Sistem Varsayılanları</div>
+                    <div class="form-group"><label class="form-label">Varsayılan Saatlik Limit</label><input
+                            type="number" class="form-input" value="60" id="sysHourly" disabled
+                            style="background:#f1f5f9;"></div>
+                    <div class="form-group"><label class="form-label">Varsayılan Günlük Limit</label><input
+                            type="number" class="form-input" value="100" id="sysDaily" disabled
+                            style="background:#f1f5f9;"></div>
+                    <div
+                        style="padding:15px; background:#eff6ff; border-radius:8px; border:1px solid #bfdbfe; color:#1e40af; font-size:0.9rem;">
+                        <i class="fa-solid fa-circle-info margin-right:5px;"></i> Sistem ayarları şu an sadece kod
+                        üzerinden değiştirilebilir.
+                    </div>
+                </div>
+
+                <!-- NEW: VERSION CONTROL CARD -->
+                <div class="card" style="max-width: 600px; margin-top: 20px; border-left: 5px solid #ef4444;">
+                    <div class="modal-title" style="color:#ef4444"><i class="fa-solid fa-triangle-exclamation"></i>
+                        Zorunlu Güncelleme Kontrolü</div>
+                    <p style="margin-bottom:15px; font-size:0.9rem; color:#64748b;">
+                        Buraya girdiğiniz versiyon numarasının altındaki tüm uygulamalar <b>kullanıma kapatılır</b> ve
+                        zorunlu güncelleme ekranı gösterilir.
+                    </p>
+
+                    <div class="form-group">
+                        <label class="form-label">Minimum Versiyon Kodu</label>
+                        <input type="number" class="form-input" id="minVersionInput" placeholder="Örn: 45">
+                        <div class="form-helper">Mevcut en son versiyon: <b>46</b>. Eğer 46 girerseniz, v45 ve altı
+                            çalışmaz.</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Karşılama / Uyarı Mesajı</label>
+                        <input type="text" class="form-input" id="welcomeMsgInput"
+                            placeholder="KuryePro Sistemine Hoşgeldiniz.">
+                    </div>
+
+                    <div style="display:flex; justify-content:flex-end;">
+                        <button class="btn btn-danger" onclick="saveAppConfig()">
+                            <i class="fa-solid fa-cloud-arrow-up"></i> Ayarları Kaydet ve Yayınla
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="editModal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-title"><i class="fa-solid fa-user-pen"></i> Kullanıcı Düzenle</div>
+            <input type="hidden" id="editUid">
+            <div class="form-group"><label class="form-label">İsim Soyisim</label><input type="text" id="editName"
+                    class="form-input"></div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                <div class="form-group"><label class="form-label">Saatlik Limit</label><input type="number"
+                        id="editHourlyLimit" class="form-input"></div>
+                <div class="form-group"><label class="form-label">Günlük Limit</label><input type="number"
+                        id="editDailyLimit" class="form-input"></div>
+            </div>
+            <div class="form-group"><label class="form-label">Erişilebilir Bölgeler</label>
+                <div class="region-select-container" id="regionCheckboxes"></div>
+                <div class="form-helper">Kullanıcının hangi harita verilerine erişebileceğini seçin.</div>
+            </div>
+            <div class="checkbox-item" style="margin-bottom:10px;"><input type="checkbox" id="editIsAdmin"><label
+                    for="editIsAdmin" style="font-weight:500;">Yönetici Yetkisi (Admin)</label></div>
+            <div class="checkbox-item"><input type="checkbox" id="editIsBanned"><label for="editIsBanned"
+                    style="font-weight:500; color:var(--danger)">Kullanıcıyı Yasakla (Ban)</label></div>
+            <div class="modal-footer"><button class="btn btn-outline"
+                    onclick="closeModal('editModal')">İptal</button><button class="btn btn-primary"
+                    onclick="saveUserChanges()">Kaydet</button></div>
+        </div>
+    </div>
+    <div id="regionModal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-title"><i class="fa-solid fa-map-location"></i> Bölge Ekle / Düzenle</div>
+            <input type="hidden" id="regionKey">
+            <div class="form-group"><label class="form-label">Bölge Adı (Örn: İstanbul Anadolu)</label><input
+                    type="text" id="regionName" class="form-input" placeholder="Bölge ismi girin..."></div>
+            <div class="form-group"><label class="form-label">Harita Verisi (JSON)</label><textarea id="regionData"
+                    class="form-input" style="height:150px; font-family:monospace; font-size:0.8rem;"
+                    placeholder='{"addresses": [...]}'></textarea>
+                <div class="form-helper">Şifreli veya ham JSON verisini buraya yapıştırın.</div>
+            </div>
+            <div class="modal-footer"><button class="btn btn-outline"
+                    onclick="closeModal('regionModal')">İptal</button><button class="btn btn-success"
+                    onclick="saveRegion()">Bölgeyi Kaydet</button></div>
+        </div>
+    </div>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getDatabase, ref, get, set, update, remove, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        // DEBUG LOGGING
+        window.logDebug = (msg) => {
+            console.log(msg);
+            const el = document.getElementById('debugLog');
+            if (el) el.innerHTML = `<div>[${new Date().toLocaleTimeString()}] ${msg}</div>` + el.innerHTML;
+        };
+
+        const firebaseConfig = { apiKey: "AIzaSyBfN1-OQUQgQTu358UO6aZ-BDIbjWZq1Mc", authDomain: "kuryeprov44.firebaseapp.com", databaseURL: "https://kuryeprov44-default-rtdb.firebaseio.com", projectId: "kuryeprov44", storageBucket: "kuryeprov44.firebasestorage.app", messagingSenderId: "177653241936", appId: "1:177653241936:web:4130a534c4bf7cb05fd955" };
+        const app = initializeApp(firebaseConfig); const auth = getAuth(app); const db = getDatabase(app); const provider = new GoogleAuthProvider();
+
+        // Global variables
+        let allUsers = [], allRegions = [], queryLogs = {};
+        window.legacyQueriesTotal = 0; // Store legacy total
+
+        const showLoading = (show) => { const el = document.getElementById('loading'); show ? el.classList.remove('hidden') : el.classList.add('hidden'); };
+
+        onAuthStateChanged(auth, (user) => {
+            logDebug("Auth Durumu: " + (user ? user.email : "Çıkış Yapıldı"));
+            if (user) { document.getElementById('loginBtn').style.display = 'none'; document.getElementById('adminEmail').innerText = user.email; checkAdminRole(user.uid); }
+            else { document.getElementById('loginBtn').style.display = 'flex'; document.getElementById('adminEmail').innerText = 'Giriş Yapılmadı'; document.getElementById('usersList').innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px;">Lütfen giriş yapın.</td></tr>'; }
+        });
+
+        async function checkAdminRole(uid) {
+            logDebug("Admin yetkisi sorgulanıyor...");
+            showLoading(true);
+            try {
+                const snapshot = await get(ref(db, 'users/' + uid));
+                if (snapshot.exists() && snapshot.val().role === 'admin') {
+                    logDebug("Giriş Başarılı: ADMIN");
+                    initRealtimeListeners();
+                } else {
+                    alert('Yönetici yetkiniz yok!');
+                    signOut(auth);
+                }
+            } catch (e) { logDebug("Admin Check Hatası: " + e.message); alert('Yetki hatası.'); }
+            showLoading(false);
+        }
+
+        function initRealtimeListeners() {
+            logDebug("Veri akışı başlatılıyor...");
+
+            // USERS LISTENER
+            onValue(ref(db, 'users'), (snapshot) => {
+                logDebug("Users verisi geldi. Mevcut mu: " + snapshot.exists());
+                allUsers = [];
+                let totalLegacyQueries = 0;
+                let banned = 0;
+
+                if (snapshot.exists()) {
+                    snapshot.forEach(child => {
+                        const u = child.val();
+                        u.key = child.key;
+                        allUsers.push(u);
+                        if (u.isBanned) banned++;
+                        // Count legacy queries if exists
+                        if (u.queryCount) totalLegacyQueries += parseInt(u.queryCount) || 0;
+                    });
+                }
+
+                logDebug("Toplam Kullanıcı: " + allUsers.length);
+                document.getElementById('totalUsers').innerText = allUsers.length;
+
+                const bannedEl = document.getElementById('bannedUsers');
+                if (bannedEl) bannedEl.innerText = banned;
+                else logDebug("HATA: bannedUsers elementi bulunamadı!");
+
+                // Update global legacy total and refresh display
+                window.legacyQueriesTotal = totalLegacyQueries;
+                updateTotalQueriesDisplay();
+
+                renderUsers(allUsers);
+            }, (err) => logDebug("Users Listener Hatası: " + err.message));
+
+            // REGIONS LISTENER
+            onValue(ref(db, 'regions'), (snapshot) => {
+                allRegions = []; if (snapshot.exists()) { snapshot.forEach(child => { allRegions.push({ key: child.key, ...child.val() }); }); }
+                document.getElementById('totalRegions').innerText = allRegions.length; renderRegions();
+            });
+
+
+
+        }
+
+        function updateTotalQueriesDisplay() {
+            const grandTotal = (window.legacyQueriesTotal || 0);
+
+            const el = document.getElementById('totalQueries');
+            if (el) el.innerText = grandTotal;
+        }
+
+        function renderUsers(users) {
+            logDebug("Render Users Başladı. Sayı: " + users.length);
+            const list = document.getElementById('usersList');
+            if (!list) { logDebug("HATA: usersList tablosu yok!"); return; }
+            list.innerHTML = '';
+
+            if (users.length === 0) { list.innerHTML = '<tr><td colspan="5" style="text-align:center;">Kullanıcı bulunamadı.</td></tr>'; return; }
+
+            users.forEach((u, idx) => {
+                try {
+                    const tr = document.createElement('tr');
+                    const roleBadge = u.role === 'admin' ? '<span class="badge badge-blue">ADMIN</span>' : '<span class="badge badge-gray">USER</span>';
+                    const statusBadge = u.isBanned ? '<span class="badge badge-red">BAN</span>' : '<span class="badge badge-green">AKTİF</span>';
+
+                    // Region Count Logic
+                    let rCount = '<span style="color:#ef4444; font-weight:600;">Yetki Yok</span>';
+                    if (u.role === 'admin') {
+                        rCount = '<span style="color:#2563eb; font-weight:600;">Tam Yetki</span>';
+                    } else if (u.allowedRegions && typeof u.allowedRegions === 'object') {
+                        const count = Object.keys(u.allowedRegions).length;
+                        if (count > 0) rCount = count + ' Bölge';
+                    }
+
+                    // User Specific Query Count Logic
+                    let userTotalQ = 0;
+                    if (u.queryCount) userTotalQ += (parseInt(u.queryCount) || 0);
+
+                    tr.innerHTML = `<td><div style="font-weight: 600; color:#1e293b;">${u.displayName || 'İsimsiz'}</div><div style="font-size: 0.85rem; color: #64748b;">${u.email || 'E-posta Yok'}</div></td>
+                        <td>${roleBadge} ${statusBadge}</td>
+                        <td>
+                            <div style="font-family:monospace; font-size:0.9rem;">
+                               <i class="fa-solid fa-hourglass-half" style="color:#94a3b8; width:15px;"></i> ${u.hourlyLimit || 6} / Saat<br>
+                               <i class="fa-solid fa-calendar-day" style="color:#94a3b8; width:15px;"></i> ${u.dailyLimit || 100} / Gün
+                            </div>
+                        </td>
+                        <td>
+                            <div style="font-size:0.9rem;">
+                                <strong>${userTotalQ}</strong> Sorgu<br>
+                                <span class="badge badge-gray">${rCount}</span>
+                            </div>
+                        </td>
+                        <td style="text-align:right;">
+                            ${(u.hourlyLimit === 0 && u.dailyLimit === 0) ? `<button class="btn btn-success" style="padding: 6px 10px; margin-right:5px;" onclick="window.approveUser('${u.uid}', '${u.displayName}')"><i class="fa-solid fa-check"></i> Onayla</button>` : ''}
+                            <button class="btn btn-outline" style="padding: 6px 10px;" onclick="window.openEditModal('${u.uid}')"><i class="fa-solid fa-pen"></i></button>
+                            ${u.email !== 'yal42d@gmail.com' ? `<button class="btn btn-danger" style="padding: 6px 10px; margin-left:5px;" onclick="window.deleteUser('${u.uid}', '${u.email}')"><i class="fa-solid fa-trash"></i></button>` : ''}
+                        </td>`;
+                    list.appendChild(tr);
+                } catch (e) { logDebug("Render Row Hata (" + idx + "): " + e.message); }
+            });
+            logDebug("Render Users Bitti.");
+        }
+
+        function renderRegions() {
+            const list = document.getElementById('regionsList'); list.innerHTML = '';
+            if (allRegions.length === 0) { list.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px;">Henüz bölge eklenmedi.</td></tr>'; return; }
+            allRegions.forEach(r => {
+                const size = r.data ? (JSON.stringify(r.data).length / 1024).toFixed(1) + ' KB' : '0 KB';
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td style="font-weight:600;">${r.name}</td><td>${size}</td><td><span class="badge badge-green">AKTİF</span></td>
+                    <td style="text-align:right;"><button class="btn btn-danger" onclick="deleteRegion('${r.key}')"><i class="fa-solid fa-trash"></i> Sil</button></td>`;
+                list.appendChild(tr);
+            });
+        }
+
+
+        window.openEditModal = (uid) => {
+            const u = allUsers.find(x => x.uid === uid); if (!u) return;
+            document.getElementById('editUid').value = uid; document.getElementById('editName').value = u.displayName || ''; document.getElementById('editHourlyLimit').value = u.hourlyLimit || 6; document.getElementById('editDailyLimit').value = u.dailyLimit || 100; document.getElementById('editIsAdmin').checked = (u.role === 'admin'); document.getElementById('editIsBanned').checked = (u.isBanned === true);
+            const isSuper = (u.email === 'yal42d@gmail.com'); document.getElementById('editIsAdmin').disabled = isSuper; document.getElementById('editIsBanned').disabled = isSuper;
+
+            const regionContainer = document.getElementById('regionCheckboxes'); regionContainer.innerHTML = '';
+            if (allRegions.length === 0) { regionContainer.innerHTML = '<div style="color:#94a3b8; font-size:0.85rem;">Sistemde tanımlı bölge yok.</div>'; }
+            else {
+                allRegions.forEach(r => {
+                    const isChecked = u.allowedRegions && u.allowedRegions[r.key] === true;
+                    regionContainer.innerHTML += `<div class="checkbox-item"><input type="checkbox" id="reg_${r.key}" ${isChecked ? 'checked' : ''}><label for="reg_${r.key}">${r.name}</label></div>`;
+                });
+            }
+            document.getElementById('editModal').style.display = 'flex';
+        };
+        window.saveUserChanges = async () => {
+            const uid = document.getElementById('editUid').value; let hourly = parseInt(document.getElementById('editHourlyLimit').value); let daily = parseInt(document.getElementById('editDailyLimit').value);
+            if (hourly > daily) { alert(`Hata: Saatlik limit büyük olamaz! Otomatik eşitlendi.`); hourly = daily; }
+
+            const allowedRegions = {};
+            allRegions.forEach(r => { if (document.getElementById(`reg_${r.key}`).checked) allowedRegions[r.key] = true; });
+
+            const newData = { displayName: document.getElementById('editName').value, hourlyLimit: hourly, dailyLimit: daily, role: document.getElementById('editIsAdmin').checked ? 'admin' : 'user', isBanned: document.getElementById('editIsBanned').checked, allowedRegions: allowedRegions };
+            showLoading(true); try { await update(ref(db, 'users/' + uid), newData); closeModal('editModal'); } catch (e) { alert('Hata: ' + e.message); } showLoading(false);
+        };
+        window.deleteUser = async (uid, email) => { if (!confirm('Silmek istediğinize emin misiniz?')) return; try { await remove(ref(db, 'users/' + uid)); await remove(ref(db, 'queryLogs/' + uid)); } catch (e) { alert(e.message); } };
+        window.approveUser = async (uid, name) => {
+            if (!confirm(`${name || 'Bu kullanıcı'} için erişim izni verilsin mi?\n(Limitler: 60/Saat, 100/Gün olarak ayarlanacak)`)) return;
+            showLoading(true);
+            try {
+                await update(ref(db, 'users/' + uid), {
+                    hourlyLimit: 60,
+                    dailyLimit: 100,
+                    isApproved: true,
+                    isBanned: false
+                });
+                alert('Kullanıcı onaylandı.'); // İsteğe bağlı, zaten realtime update olur
+            } catch (e) { alert('Hata: ' + e.message); }
+            showLoading(false);
+        };
+        window.openRegionModal = () => { document.getElementById('regionKey').value = ''; document.getElementById('regionName').value = ''; document.getElementById('regionData').value = ''; document.getElementById('regionModal').style.display = 'flex'; };
+        window.closeModal = (id) => { document.getElementById(id).style.display = 'none'; };
+
+        // --- NEW: APP CONFIG LOGIC ---
+        window.loadAppConfig = async () => {
+            try {
+                const res = await fetch('/api/config');
+                const data = await res.json();
+                if (data) {
+                    document.getElementById('minVersionInput').value = data.force_update_min_version || 0;
+                    document.getElementById('welcomeMsgInput').value = data.welcome_message || '';
+                }
+            } catch (e) { console.error("Config Load Error:", e); }
+        };
+
+        window.saveAppConfig = async () => {
+            if (!confirm("DİKKAT: Bu değişiklik tüm kullanıcılarda anında etkili olacaktır. Devam edilsin mi?")) return;
+
+            const minVer = document.getElementById('minVersionInput').value;
+            const welMsg = document.getElementById('welcomeMsgInput').value;
+
+            showLoading(true);
+            try {
+                const res = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        min_version: minVer,
+                        welcome_message: welMsg
+                    })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    alert("Ayarlar başarıyla kaydedildi ve GitHub'a gönderildi.");
+                } else {
+                    alert("Hata: " + result.error);
+                }
+            } catch (e) { alert("Bağlantı hatası: " + e.message); }
+            showLoading(false);
+        };
+
+        // Initialize Config on Load
+        // We hook into existing init or just call it if we are on settings tab
+        // Better: Call it when switching to settings tab
+        const originalSwitchTab = window.switchTab;
+        window.switchTab = (tabName) => {
+            // Original logic (mimicked here as we don't have access to original function scope directly if defined inside module, 
+            // but looking at source it is global or assumed global. Wait, switchTab is NOT defined in the script block I saw!
+            // It must be in a separate script file or standard script block. 
+            // Checking file view... Ah, `window.switchTab` is NOT visible in line 600+.
+            // It must be defined in <script> tags above line 600 or imported.
+            // Let's just hook the button or assume it exists. 
+            // Since I cannot easily hook the existing function without finding where it is, I will add the call to the onclick of the Settings button if possible
+            // OR just call it once on load to be safe.
+
+            document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.content > div').forEach(d => d.classList.add('hidden'));
+
+            document.getElementById('btn-' + tabName).classList.add('active');
+            document.getElementById('tab-' + tabName).classList.remove('hidden');
+
+            if (tabName === 'settings') window.loadAppConfig();
+        };
+        window.saveRegion = async () => {
+            const name = document.getElementById('regionName').value; const dataStr = document.getElementById('regionData').value;
+            if (!name || !dataStr) { alert('Lütfen tüm alanları doldurun.'); return; }
+            showLoading(true); try { const newKey = name.toLowerCase().replace(/\s+/g, '_'); await set(ref(db, 'regions/' + newKey), { name: name, data: dataStr, updatedAt: new Date().toISOString() }); closeModal('regionModal'); alert('Bölge eklendi.'); } catch (e) { alert('Hata: ' + e.message); } showLoading(false);
+        };
+        window.deleteRegion = async (key) => { if (!confirm('Bu bölgeyi silmek istediğinize emin misiniz?')) return; showLoading(true); try { await remove(ref(db, 'regions/' + key)); } catch (e) { alert(e.message); } showLoading(false); };
+        window.migrateLegacyData = async () => {
+            if (!confirm('Mevcut harita verisini (secureMapData) "Real AVM" olarak bölgelere eklemek istiyor musunuz?')) return;
+            showLoading(true); try { const snap = await get(ref(db, 'secureMapData')); if (!snap.exists()) { alert('Eski veri bulunamadı.'); showLoading(false); return; } await set(ref(db, 'regions/real_avm'), { name: 'Real AVM', data: snap.val(), updatedAt: new Date().toISOString() }); alert('Başarılı! Real AVM bölgesi oluşturuldu.'); } catch (e) { console.error(e); alert('Hata: ' + e.message); } showLoading(false);
+        };
+
+
+        window.login = () => signInWithPopup(auth, provider); window.logout = () => signOut(auth); window.closeModal = (id) => document.getElementById(id).style.display = 'none';
+        window.switchTab = (tab) => { document.querySelectorAll('.content > div').forEach(d => d.classList.add('hidden')); document.getElementById('tab-' + tab).classList.remove('hidden'); document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('active')); document.getElementById('btn-' + tab).classList.add('active'); const titles = { 'users': 'Kullanıcı Yönetimi', 'regions': 'Bölge Yönetimi', 'logs': 'Sorgu Kayıtları', 'settings': 'Ayarlar' }; document.getElementById('pageTitle').innerText = titles[tab]; }
+        window.loadDataFromDB = (manual) => { if (manual) alert('Veriler anlık olarak güncelleniyor.'); }
+    </script>
+</body>
+
+</html>

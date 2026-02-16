@@ -1,0 +1,37 @@
+{
+    "rules": {
+        "users": {
+            ".read": "auth != null",
+            "$uid": {
+                ".read": "auth != null && (auth.uid == $uid || root.child('users').child(auth.uid).child('role').val() == 'admin')",
+                ".write": "(auth != null && auth.uid == $uid && ( (!data.exists() && newData.child('role').val() == 'user' && newData.child('isApproved').val() == false && newData.child('dailyLimit').val() == 0 && newData.child('hourlyLimit').val() == 0 && (!newData.hasChild('queryCount') || (newData.child('queryCount').isNumber() && newData.child('queryCount').val() >= 0))) || (data.exists() && (!newData.hasChild('role') || newData.child('role').val() === data.child('role').val()) && (!newData.hasChild('isApproved') || newData.child('isApproved').val() === data.child('isApproved').val()) && (!newData.hasChild('dailyLimit') || newData.child('dailyLimit').val() <= data.child('dailyLimit').val()) && (!newData.hasChild('hourlyLimit') || newData.child('hourlyLimit').val() <= data.child('hourlyLimit').val()) && (!newData.hasChild('queryCount') || (newData.child('queryCount').isNumber() && newData.child('queryCount').val() >= 0))) )) || root.child('users').child(auth.uid).child('role').val() == 'admin'"
+            }
+        },
+        "regions": {
+            ".read": "auth != null && root.child('users').child(auth.uid).child('isBanned').val() != true && root.child('users').child(auth.uid).child('isApproved').val() == true",
+            ".write": "root.child('users').child(auth.uid).child('role').val() == 'admin'"
+        },
+        "queryLogs": {
+            ".read": "root.child('users').child(auth.uid).child('role').val() == 'admin'",
+            "$uid": {
+                ".read": "root.child('users').child(auth.uid).child('role').val() == 'admin'",
+                ".write": "(auth != null && auth.uid == $uid && newData.exists()) || root.child('users').child(auth.uid).child('role').val() == 'admin'"
+            }
+        },
+        "secureMapData": {
+            ".read": "auth != null && root.child('users').child(auth.uid).child('isBanned').val() != true && root.child('users').child(auth.uid).child('isApproved').val() == true",
+            ".write": "root.child('users').child(auth.uid).child('role').val() == 'admin'"
+        },
+        "temp_auth_tokens": {
+            ".read": "false",
+            "$token": {
+                ".read": "true",
+                ".write": "true"
+            }
+        },
+        "system_settings": {
+            ".read": "auth != null",
+            ".write": "root.child('users').child(auth.uid).child('role').val() == 'admin'"
+        }
+    }
+}

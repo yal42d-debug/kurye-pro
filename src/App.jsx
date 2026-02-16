@@ -39,9 +39,30 @@ function App() {
           return;
         }
 
+        // --- NEW: FORCED UPDATE CHECK ---
+        // Fetch App Config for Min Version
+        const configReq = await fetch(`https://raw.githubusercontent.com/${repoUser}/${repoName}/${branch}/updates/app_config.json?t=${Date.now()}`);
+        if (configReq.ok) {
+          const configData = await configReq.json();
+          const minAllowed = parseInt(configData.force_update_min_version || "0");
+
+          if (localVersion < minAllowed && localVersion > 0) {
+            console.error(`FORCED UPDATE: Local ${localVersion} < Min ${minAllowed}`);
+            // Set special state to BLOCK app
+            setUpdateAvailable({
+              forced: true,
+              version: serverVersion,
+              url: data.url,
+              msg: "Bu sürüm artık desteklenmiyor. Lütfen güncelleyin."
+            });
+            return; // Stop processing
+          }
+        }
+
         if (serverVersion > localVersion) {
           console.log("New version detected:", serverVersion);
           setUpdateAvailable({
+            forced: false,
             version: serverVersion,
             url: data.url
           });
@@ -67,26 +88,46 @@ function App() {
     <>
       <div id="app-root" dangerouslySetInnerHTML={{ __html: appHtml }} />
 
-      {/* Simple Update Notification Modal */}
+      {/* Update Notification Modal (Normal & Forced) */}
       {updateAvailable && (
         <div style={{
-          position: 'fixed', bottom: '20px', right: '20px', left: '20px',
-          backgroundColor: '#10b981', color: 'white', padding: '15px',
-          borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
-          zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          position: 'fixed', bottom: updateAvailable.forced ? '0' : '20px',
+          right: updateAvailable.forced ? '0' : '20px',
+          left: updateAvailable.forced ? '0' : '20px',
+          top: updateAvailable.forced ? '0' : 'auto',
+          backgroundColor: updateAvailable.forced ? 'rgba(0,0,0,0.95)' : '#10b981',
+          color: 'white', padding: '20px',
+          borderRadius: updateAvailable.forced ? '0' : '12px',
+          boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+          zIndex: 99999, display: 'flex', flexDirection: updateAvailable.forced ? 'column' : 'row',
+          alignItems: 'center', justifyContent: updateAvailable.forced ? 'center' : 'space-between',
           animation: 'slideUp 0.5s ease-out'
         }}>
-          <div>
-            <div style={{ fontWeight: 'bold', fontSize: '14px' }}>Yeni Güncelleme Mevcut!</div>
-            <div style={{ fontSize: '12px', opacity: 0.9 }}>Devam etmek için indirin.</div>
+          {updateAvailable.forced && (
+            <div style={{ fontSize: '50px', marginBottom: '20px' }}>⚠️</div>
+          )}
+
+          <div style={{ textAlign: updateAvailable.forced ? 'center' : 'left', marginBottom: updateAvailable.forced ? '20px' : '0' }}>
+            <div style={{ fontWeight: 'bold', fontSize: updateAvailable.forced ? '22px' : '14px' }}>
+              {updateAvailable.forced ? 'ZORUNLU GÜNCELLEME' : 'Yeni Güncelleme Mevcut!'}
+            </div>
+            <div style={{ fontSize: updateAvailable.forced ? '16px' : '12px', opacity: 0.9, marginTop: '5px' }}>
+              {updateAvailable.forced ? (updateAvailable.msg || 'Devam etmek için güncellemeniz gerekiyor.') : 'Devam etmek için indirin.'}
+            </div>
+            {updateAvailable.forced && <div style={{ marginTop: '10px', fontSize: '14px', color: '#ef4444' }}>v{updateAvailable.version} sürümüne geçmelisiniz.</div>}
           </div>
+
           <button
             onClick={handleUpdateClick}
             style={{
-              backgroundColor: 'white', color: '#059669', border: 'none',
-              padding: '8px 16px', borderRadius: '8px', fontWeight: 'bold', fontSize: '12px'
+              backgroundColor: updateAvailable.forced ? '#ef4444' : 'white',
+              color: updateAvailable.forced ? 'white' : '#059669',
+              border: 'none',
+              padding: updateAvailable.forced ? '15px 40px' : '8px 16px',
+              borderRadius: '8px', fontWeight: 'bold', fontSize: updateAvailable.forced ? '18px' : '12px',
+              marginTop: updateAvailable.forced ? '20px' : '0'
             }}>
-            İNDİR
+            {updateAvailable.forced ? 'HEMEN GÜNCELLE' : 'İNDİR'}
           </button>
         </div>
       )}

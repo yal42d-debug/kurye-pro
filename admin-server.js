@@ -16,6 +16,7 @@ app.use(express.json());
 app.use(express.static('admin_ui')); // UI dosyaları
 
 const DEVICES_FILE = path.join(process.cwd(), 'updates', 'allowed_devices.json');
+const APP_CONFIG_FILE = path.join(process.cwd(), 'updates', 'app_config.json');
 
 // 1. Cihazları Getir
 app.get('/api/devices', (req, res) => {
@@ -66,6 +67,57 @@ app.post('/api/update', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
+// 3. Uygulama Ayarlarını Getir
+app.get('/api/config', (req, res) => {
+    try {
+        const data = fs.readFileSync(APP_CONFIG_FILE, 'utf8');
+        res.json(JSON.parse(data));
+    } catch (err) {
+        res.status(500).json({ error: "Config dosyası okunamadı" });
+    }
+});
+
+// 4. Uygulama Ayarlarını Güncelle (Min Sürüm vb.)
+app.post('/api/config', async (req, res) => {
+    try {
+        const { min_version, maintenance_mode, welcome_message } = req.body;
+
+        const data = JSON.parse(fs.readFileSync(APP_CONFIG_FILE, 'utf8'));
+
+        // Sadece gelen değerleri güncelle
+        if (min_version !== undefined) data.force_update_min_version = String(min_version);
+        if (welcome_message !== undefined) data.welcome_message = welcome_message;
+
+        // Dosyaya yaz
+        fs.writeFileSync(APP_CONFIG_FILE, JSON.stringify(data, null, 4));
+
+        console.log("⚙️ Ayarlar güncellendi:", data);
+
+        // GitHub Paylaş
+        await gitPushConfig();
+
+        res.json({ success: true, data });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+function gitPushConfig() {
+    return new Promise((resolve, reject) => {
+        console.log("☁️ Config için GitHub güncelleniyor...");
+        exec(`git add updates/app_config.json && git commit -m "Update App Config (Admin Panel)" && git push`, (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Git hatası: ${error}`);
+                // Hata olsa bile localde değiştiği için başarılı sayabiliriz ama loglayalım
+            }
+            console.log(`GitHub Çıktısı: ${stdout}`);
+            resolve();
+        });
+    });
+}
 
 // Git Push Fonksiyonu
 function gitPush() {

@@ -1,0 +1,5 @@
+total 8
+drwxr-xr-x@  4 yalcindegirmenci  staff  128 Feb 11 15:22 .
+drwxr-xr-x@ 14 yalcindegirmenci  staff  448 Feb 11 19:08 ..
+drwxr-xr-x@ 27 yalcindegirmenci  staff  864 Feb 11 19:08 Medium_Phone.avd
+-rw-r--r--@  1 yalcindegirmenci  staff  132 Feb 11 16:13 Medium_Phone_API_36.1.ini

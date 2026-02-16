@@ -1,7 +1,7 @@
 //noinspection SpellCheckingInspection
 // cspell:disable
 /* global L */
-import { getBonusForMode, getDailyBonus, getKmPrice } from '../lib/calculations';
+import { getBonusForMode, getDailyBonus, getKmRate } from '../lib/calculations';
 import { fetchSecureData, startGoogleLogin, checkAccess } from '../lib/security';
 
 export function setBodyClass() {
