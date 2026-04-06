@@ -7,8 +7,8 @@ echo "🚀 KuryePro Güncelleme Yayınlayıcı"
 echo "📦 Build alınıyor..."
 npm run build
 
-# 2. Versiyon oluştur (Timestamp bazlı)
-VERSION=$(date +%s)
+# 2. Versiyon oluştur (version.txt'den al)
+VERSION=$(cat version.txt)
 echo "🏷  Yeni versiyon ID: $VERSION"
 
 # 3. JSON dosyasını güncelle
