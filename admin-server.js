@@ -144,8 +144,8 @@ app.post('/api/build-publish', async (req, res) => {
 
         console.log(`\n🚀 [v${version}] İÇİN SÜREÇ BAŞLATILIYOR...`);
 
-        // 1. Yetki ve İzin Ver
-        const permissionCmd = `chmod +x ./publish_update.sh && chmod +x ./android/gradlew`;
+        // 1. Yetki ve İzin Ver ve Eski APK'ları temizle
+        const permissionCmd = `chmod +x ./publish_update.sh && chmod +x ./android/gradlew && rm updates/*.apk || true`;
         
         // 2. Web Build (Vite artık version.txt'den otomatik alıyor)
         // Not: publish_update.sh içinde de npm run build var, burada tekrara gerek yok
