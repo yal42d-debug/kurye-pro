@@ -146,8 +146,8 @@ app.post('/api/build-publish', async (req, res) => {
 
         // 0. TÜM VERSİYON DOSYALARINI GÜNCELLE (Sync)
         fs.writeFileSync(VERSION_TEXT_FILE, String(version));
-        const jsdelivrUrl = `https://cdn.jsdelivr.net/gh/yal42d-debug/kurye-pro@main/updates/KuryePro_v${version}.apk`;
-        const vData = { version: String(version), url: jsdelivrUrl };
+        const rawUrl = `https://raw.githubusercontent.com/yal42d-debug/kurye-pro/main/updates/KuryePro_v${version}.apk`;
+        const vData = { version: String(version), url: rawUrl };
         fs.writeFileSync(VERSION_FILE, JSON.stringify(vData, null, 4));
         
         const configData = JSON.parse(fs.readFileSync(APP_CONFIG_FILE, 'utf8'));
