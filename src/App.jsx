@@ -57,6 +57,13 @@ function App() {
           }
         }
 
+        // --- SISTEM DUYURUSU (WELCOME MSG) ---
+        // admin panelinden girilen mesajı her sürümde bir kez gösterir
+        if (configData.welcome_message && localStorage.getItem('last_msg') !== configData.welcome_message) {
+          alert("Sistem Duyurusu:\n" + configData.welcome_message);
+          localStorage.setItem('last_msg', configData.welcome_message);
+        }
+
         // Normal Update Check
         if (serverVersion > localVersion) {
           setUpdateAvailable({
