@@ -595,7 +595,10 @@
                                 <input type="text" class="form-input" id="apkUrlInput" placeholder="https://raw.githubusercontent.com/...">
                                 <div class="form-helper">Eğer boş bırakırsanız sistem otomatik GitHub linki oluşturur.</div>
                             </div>
-                            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                            <div style="display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap;">
+                                <button class="btn btn-warning" onclick="killOldVersions()" style="padding: 10px 25px; background: #dc2626; border-color: #dc2626; color: white;">
+                                    <i class="fa-solid fa-ban"></i> Tüm Eski Sürümleri Kapat
+                                </button>
                                 <button class="btn btn-primary" onclick="saveAppConfig()" style="padding: 10px 25px;">
                                     <i class="fa-solid fa-save"></i> Ayarları Kaydet
                                 </button>
@@ -1093,6 +1096,18 @@
                 }
             } catch (e) { alert("Bağlantı Hatası: " + e.message); }
             showLoading(false);
+        };
+
+        window.killOldVersions = async () => {
+            const latestVer = document.getElementById('latestVersionInput').value;
+            if (!latestVer) {
+                alert("Önce 'Yayınlanan En Son Sürüm' alanını doldurmalısınız.");
+                return;
+            }
+            if (!confirm(`DİKKAT: v${latestVer} sürümünden düşük olan TÜM cihazlarda uygulama anında kilitlenecek ve güncelleme zorunlu hale gelecektir. Devam edilsin mi?`)) return;
+            
+            document.getElementById('minVersionInput').value = latestVer;
+            await window.saveAppConfig(false);
         };
 
         window.saveAppConfig = async (silent = false) => {
