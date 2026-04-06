@@ -148,21 +148,23 @@ app.post('/api/build-publish', async (req, res) => {
         const permissionCmd = `chmod +x ./publish_update.sh && chmod +x ./android/gradlew`;
         
         // 2. Web Build (Vite artık version.txt'den otomatik alıyor)
-        const webBuildCmd = `npm run build && ./publish_update.sh`;
+        // Not: publish_update.sh içinde de npm run build var, burada tekrara gerek yok
+        const webBuildCmd = `./publish_update.sh`;
         
         // 3. Android Build ve APK Kopyalama
-        const apkBuildCmd = `npx cap sync && cd android && ./gradlew clean && ./gradlew assembleDebug && cp app/build/outputs/apk/debug/app-debug.apk ../updates/KuryePro_v${version}.apk`;
+        // ÖNEMLİ: cd android yaptıktan sonra cd .. ile geri dönmeliyiz ki sonraki git komutları kök dizinde çalışsın
+        const apkBuildCmd = `npx cap sync && cd android && ./gradlew clean && ./gradlew assembleDebug && cp app/build/outputs/apk/debug/app-debug.apk ../updates/KuryePro_v${version}.apk && cd ..`;
 
         // 4. GitHub Push (Daha sağlam hale getirildi)
-        // Bekle ve her şeyi ekle, commit yap (değişiklik yoksa bile geç), pushla
-        const gitPushCmd = `git add . && git add updates/*.apk && (git commit -m "🚀 Auto-Build: Version ${version}" || true) && git push origin main`;
+        const gitPushCmd = `git add . && (git commit -m "🚀 Auto-Build: Version ${version}" || true) && git push origin main`;
 
         // Tüm komutları sırayla çalıştır
         const fullCommand = `${permissionCmd} && ${webBuildCmd} && ${apkBuildCmd} && ${gitPushCmd}`;
 
         console.log("🛠️ Komutlar çalıştırılıyor, lütfen bekleyin (gradle derlemesi sürebilir)...");
 
-        exec(fullCommand, (error, stdout, stderr) => {
+        // maxBuffer'ı artırıyoruz (10MB) çünkü build logları çok uzun olabilir
+        exec(fullCommand, { maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
             if (error) {
                 console.error("❌ Hata Oluştu:", error);
                 return res.status(500).json({ 

@@ -1,1 +1,11 @@
 node_modules
+www/
+dist/
+.gradle/
+build/
+*.log
+.DS_Store
+.firebaserc
+.firebase/
+.venv/
+__pycache__/
