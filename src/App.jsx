@@ -7,9 +7,10 @@ import { bindAppGlobals, initApp, setBodyClass } from './logic/appLogic.js';
 function App() {
   const [updateAvailable, setUpdateAvailable] = useState(null);
 
+  const APP_VERSION_CODE = 46; // Bu APK'nın sürümü
+  
   useEffect(() => {
     // --- APP VERSION SETTINGS ---
-    const APP_VERSION_CODE = 46; // Bu APK'nın sürümü
     
     // 1. App Logic Init
     try {
@@ -126,6 +127,18 @@ function App() {
           )}
         </div>
       )}
+      <div style={{
+          position: 'fixed', 
+          bottom: '5px', 
+          right: '5px', 
+          fontSize: '10px', 
+          color: '#94a3b8', 
+          zIndex: 9999,
+          pointerEvents: 'none',
+          opacity: 0.7
+      }}>
+        v{APP_VERSION_CODE}
+      </div>
     </>
   );
 }
