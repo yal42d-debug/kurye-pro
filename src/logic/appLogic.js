@@ -1425,34 +1425,55 @@ function savePriceSettings() {
 
 function backupData() {
     const backup = {
-        metadata: { app: "Kurye Pro", version: "V34", date: new Date().toISOString() },
-        prices, dailyBonusTiers, calendarData, checklistStart, checklistEnd, garageData, packetCounter, accumulatedPayments, fuelHistory,
-        expenses: JSON.parse(localStorage.getItem('kurye_expenses') || '{}')
+        metadata: { 
+            app: "Kurye Pro", 
+            version: "V46", 
+            date: new Date().toISOString() 
+        },
+        data: {
+            calendar: JSON.parse(localStorage.getItem('kurye_calendar') || '{}'),
+            financial: JSON.parse(localStorage.getItem('kurye_financial') || '{}'),
+            accumulated: JSON.parse(localStorage.getItem('kurye_accumulated_payments') || '{}'),
+            history: JSON.parse(localStorage.getItem('kurye_transaction_history') || '[]'),
+            garage: JSON.parse(localStorage.getItem('kurye_garage') || '{}'),
+            repeat: JSON.parse(localStorage.getItem('kurye_repeat') || '[]'),
+            custom_expenses: JSON.parse(localStorage.getItem('kurye_custom_expenses') || '[]'),
+            prices: JSON.parse(localStorage.getItem('kurye_prices') || '{}')
+        }
     };
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = `kurye_backup_${new Date().toISOString().slice(0, 10)}.json`;
+    a.href = url; 
+    a.download = `kuryepro_yedek_${new Date().toISOString().slice(0, 10)}.json`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    showVisualSuccess("BAŞARILI", "Yedek dosyası indirildi. İndirilenler klasörüne bakınız.");
 }
 
 async function restoreData(event) {
-    const file = event.target.files[0];
+    const file = event.target ? event.target.files[0] : event;
     if (!file) return;
-    const confirmed = await showCustomConfirm('Verileriniz silinecek. Onaylıyor musunuz?', "Geri Yükle");
+    const confirmed = await window.customConfirm('Cihazdaki tüm kayıtlar silinecek ve yedekteki veriler yüklenecek. Onaylıyor musunuz?');
     if (!confirmed) return;
 
     const reader = new FileReader();
     reader.onload = function (e) {
         try {
-            const data = JSON.parse(e.target.result);
+            const wrap = JSON.parse(e.target.result);
+            const data = wrap.data || wrap; // Handle old format too
+
+            if (data.calendar) localStorage.setItem('kurye_calendar', JSON.stringify(data.calendar));
+            if (data.financial) localStorage.setItem('kurye_financial', JSON.stringify(data.financial));
+            if (data.accumulated) localStorage.setItem('kurye_accumulated_payments', JSON.stringify(data.accumulated));
+            if (data.history) localStorage.setItem('kurye_transaction_history', JSON.stringify(data.history));
+            if (data.garage) localStorage.setItem('kurye_garage', JSON.stringify(data.garage));
+            if (data.repeat) localStorage.setItem('kurye_repeat', JSON.stringify(data.repeat));
+            if (data.custom_expenses) localStorage.setItem('kurye_custom_expenses', JSON.stringify(data.custom_expenses));
             if (data.prices) localStorage.setItem('kurye_prices', JSON.stringify(data.prices));
-            if (data.expenses) localStorage.setItem('kurye_expenses', JSON.stringify(data.expenses));
-            if (data.calendarData) localStorage.setItem('kurye_calendar', JSON.stringify(data.calendarData));
-            if (data.packetCounter) localStorage.setItem('kurye_packet_counter', JSON.stringify(data.packetCounter));
-            if (data.fuelHistory) localStorage.setItem('kurye_fuel_history_list', JSON.stringify(data.fuelHistory));
-            window.location.reload();
-        } catch (err) { showVisualSuccess("Hata", "Dosya okunamadı."); }
+            
+            showVisualSuccess("HAZIR", "Veriler başarıyla yüklendi!");
+            setTimeout(() => window.location.reload(), 1500);
+        } catch (err) { alert("Dosya okunamadı veya hatalı: " + err.message); }
     };
     reader.readAsText(file);
 }
