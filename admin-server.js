@@ -142,33 +142,47 @@ app.post('/api/build-publish', async (req, res) => {
         const { version } = req.body;
         if (!version) throw new Error("Sürüm kodu gerekli.");
 
-        console.log(`🚀 v${version} için tam otomatik süreç başlatılıyor...`);
+        console.log(`\n🚀 [v${version}] İÇİN SÜREÇ BAŞLATILIYOR...`);
 
-        // 1. Yetki ver (İzin hataları için)
+        // 1. Yetki ve İzin Ver
         const permissionCmd = `chmod +x ./publish_update.sh && chmod +x ./android/gradlew`;
         
-        // 2. Web Build (Eski dist'i silerek temizliyoruz)
-        const webBuildCmd = `rm -rf dist && ./publish_update.sh`;
+        // 2. Web Build (Vite artık version.txt'den otomatik alıyor)
+        const webBuildCmd = `npm run build && ./publish_update.sh`;
         
-        // 3. Senkronizasyon ve Android Build (Önbellek temizleme eklendi!)
+        // 3. Android Build ve APK Kopyalama
         const apkBuildCmd = `npx cap sync && cd android && ./gradlew clean && ./gradlew assembleDebug && cp app/build/outputs/apk/debug/app-debug.apk ../updates/KuryePro_v${version}.apk`;
 
-        // 4. GitHub Push (Tümünü kapsar)
-        const gitPushCmd = `git add . && (git commit -m "Auto-Publish: Version ${version}" || true) && git push`;
+        // 4. GitHub Push (Daha sağlam hale getirildi)
+        // Bekle ve her şeyi ekle, commit yap (değişiklik yoksa bile geç), pushla
+        const gitPushCmd = `git add . && git add updates/*.apk && (git commit -m "🚀 Auto-Build: Version ${version}" || true) && git push origin main`;
 
+        // Tüm komutları sırayla çalıştır
         const fullCommand = `${permissionCmd} && ${webBuildCmd} && ${apkBuildCmd} && ${gitPushCmd}`;
+
+        console.log("🛠️ Komutlar çalıştırılıyor, lütfen bekleyin (gradle derlemesi sürebilir)...");
 
         exec(fullCommand, (error, stdout, stderr) => {
             if (error) {
-                console.error("Otomatik Yayın Hatası:", error);
-                return res.status(500).json({ error: error.message });
+                console.error("❌ Hata Oluştu:", error);
+                return res.status(500).json({ 
+                    success: false, 
+                    error: "Derleme veya Push hatası!", 
+                    details: error.message 
+                });
             }
-            console.log("✅ Başarıyla Yayınlandı:", stdout);
-            res.json({ success: true, message: "v" + version + " başarıyla derlendi ve GitHub'a gönderildi!" });
+            console.log("✅ BAŞARIYLA TAMAMLANDI");
+            console.log("📦 APK Oluşturuldu: updates/KuryePro_v" + version + ".apk");
+            console.log("🌐 GitHub'a Gönderildi.");
+            res.json({ 
+                success: true, 
+                message: "v" + version + " başarıyla derlendi ve GitHub'a yüklendi!" 
+            });
         });
 
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error("Fatal Error:", err);
+        res.status(500).json({ success: false, error: err.message });
     }
 });
 
