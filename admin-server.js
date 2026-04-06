@@ -127,16 +127,50 @@ app.get('/api/version', (req, res) => {
 
 function gitPushConfig() {
     return new Promise((resolve, reject) => {
-        console.log("☁️ Config ve Sürüm Dosyaları için GitHub güncelleniyor...");
-        exec(`git add updates/app_config.json updates/version.json version.txt && git commit -m "Update Config & Version (Admin Panel)" && git push`, (error, stdout, stderr) => {
-            if (error) {
-                console.error(`Git hatası: ${error}`);
-            }
+        console.log("☁️ Tüm dosyalar (Kod + Config) için GitHub güncelleniyor...");
+        // Tüm değişiklikleri ekle (.) ve hata verse bile (değişiklik yoksa) resolve et
+        exec(`git add . && git commit -m "Update Code & Config (Admin Panel)" && git push`, (error, stdout, stderr) => {
             console.log(`GitHub Çıktısı: ${stdout}`);
             resolve();
         });
     });
 }
+
+// 6. TAM OTOMATİK DERLE VE YAYINLA (Full Automation)
+app.post('/api/build-publish', async (req, res) => {
+    try {
+        const { version } = req.body;
+        if (!version) throw new Error("Sürüm kodu gerekli.");
+
+        console.log(`🚀 v${version} için tam otomatik süreç başlatılıyor...`);
+
+        // 1. Yetki ver (İzin hataları için)
+        const permissionCmd = `chmod +x ./publish_update.sh && chmod +x ./android/gradlew`;
+        
+        // 2. Web Build
+        const webBuildCmd = `./publish_update.sh`;
+        
+        // 3. Android Build ve APK Kopyalama
+        const apkBuildCmd = `cd android && ./gradlew assembleRelease && cp app/build/outputs/apk/release/app-release-unsigned.apk ../updates/KuryePro_v${version}.apk`;
+
+        // 4. GitHub Push (Tümünü kapsar)
+        const gitPushCmd = `git add . && (git commit -m "Auto-Publish: Version ${version}" || true) && git push`;
+
+        const fullCommand = `${permissionCmd} && ${webBuildCmd} && ${apkBuildCmd} && ${gitPushCmd}`;
+
+        exec(fullCommand, (error, stdout, stderr) => {
+            if (error) {
+                console.error("Otomatik Yayın Hatası:", error);
+                return res.status(500).json({ error: error.message });
+            }
+            console.log("✅ Başarıyla Yayınlandı:", stdout);
+            res.json({ success: true, message: "v" + version + " başarıyla derlendi ve GitHub'a gönderildi!" });
+        });
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
 // Git Push Fonksiyonu
 function gitPush() {

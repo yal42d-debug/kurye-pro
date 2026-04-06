@@ -78,7 +78,11 @@ function App() {
 
   const handleUpdateClick = async () => {
     if (!updateAvailable) return;
-    await Browser.open({ url: updateAvailable.url });
+    // Download fix: Use system browser for cleaner APK download completion
+    await Browser.open({ 
+        url: updateAvailable.url,
+        windowName: '_system'
+    });
   };
 
   return (

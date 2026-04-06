@@ -595,9 +595,12 @@
                                 <input type="text" class="form-input" id="apkUrlInput" placeholder="https://raw.githubusercontent.com/...">
                                 <div class="form-helper">Eğer boş bırakırsanız sistem otomatik GitHub linki oluşturur.</div>
                             </div>
-                            <div style="display: flex; justify-content: flex-end;">
+                            <div style="display: flex; justify-content: flex-end; gap: 10px;">
                                 <button class="btn btn-primary" onclick="saveAppConfig()" style="padding: 10px 25px;">
-                                    <i class="fa-solid fa-cloud-arrow-up"></i> Ayarları Yayınla (GitHub)
+                                    <i class="fa-solid fa-save"></i> Ayarları Kaydet
+                                </button>
+                                <button class="btn btn-success" id="fullPublishBtn" onclick="fullBuildAndPublish()" style="padding: 10px 25px; background: #059669; border-color: #059669;">
+                                    <i class="fa-solid fa-rocket"></i> TAM OTOMATİK DERLE & YAYINLA
                                 </button>
                             </div>
                         </div>
@@ -1066,8 +1069,34 @@
             } catch (e) { console.error("Config Load Error:", e); }
         };
 
-        window.saveAppConfig = async () => {
-            if (!confirm("DİKKAT: Bu değişiklik tüm kullanıcılarda anında etkili olacaktır. Devam edilsin mi?")) return;
+        window.fullBuildAndPublish = async () => {
+            const version = document.getElementById('latestVersionInput').value;
+            if (!version) return alert("Hata: Sürüm numarası boş olamaz!");
+
+            if (!confirm(`DİKKAT: v${version} sürümü için tüm kod derlenecek ve GitHub'a gönderilecektir. Bu işlem 1-2 dakika sürebilir. Onaylıyor musunuz?`)) return;
+
+            showLoading(true);
+            try {
+                // Önce ayarları kaydet
+                await saveAppConfig(true);
+
+                const res = await fetch('/api/build-publish', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ version })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    alert(result.message);
+                } else {
+                    alert("Build Hatası: " + result.error);
+                }
+            } catch (e) { alert("Bağlantı Hatası: " + e.message); }
+            showLoading(false);
+        };
+
+        window.saveAppConfig = async (silent = false) => {
+            if (!silent && !confirm("DİKKAT: Bu değişiklik tüm kullanıcılarda anında etkili olacaktır. Devam edilsin mi?")) return;
 
             const minVer = document.getElementById('minVersionInput').value;
             const welMsg = document.getElementById('welcomeMsgInput').value;
@@ -1087,12 +1116,10 @@
                     })
                 });
                 const result = await res.json();
-                if (result.success) {
+                if (result.success && !silent) {
                     alert("Ayarlar ve Sürüm Bilgileri başarıyla kaydedildi ve GitHub'a gönderildi.");
-                } else {
-                    alert("Hata: " + result.error);
                 }
-            } catch (e) { alert("Bağlantı hatası: " + e.message); }
+            } catch (e) { if (!silent) alert("Bağlantı hatası: " + e.message); }
             showLoading(false);
         };
 
