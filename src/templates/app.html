@@ -2,6 +2,8 @@
 <div id="loginOverlay"
     class="fixed inset-0 z-[999] bg-[#0f172a] flex flex-col items-center justify-center p-6 text-center animate-fade-in">
     <div class="mb-14">
+        <h2 class="text-3xl font-black text-white mb-2 tracking-tight uppercase">KURYE PRO</h2>
+        <p class="text-gray-500 text-[9px] mb-8 uppercase tracking-[0.3em] font-bold">PROFESYONEL LOJİSTİK YÖNETİMİ</p>
         <span id="loginVersionDisp" class="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs font-mono text-gray-500 uppercase tracking-[0.4em] leading-none">...</span>
     </div>
 
@@ -136,7 +138,10 @@
 <!-- Header -->
 <div class="glass-header sticky top-0 z-40 px-4">
     <div class="max-w-md mx-auto flex justify-between items-center">
-        <span id="appHeaderVersion" class="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-[10px] font-mono text-gray-400">...</span>
+        <div class="flex items-center">
+            <span class="text-lg font-black tracking-tighter text-white mr-2">KURYE PRO</span>
+            <span id="appHeaderVersion" class="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-[10px] font-mono text-gray-400">...</span>
+        </div>
         <div id="headerTools" class="flex items-center gap-3">
 
             <button onclick="toggleSettings()"
