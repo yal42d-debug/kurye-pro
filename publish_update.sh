@@ -11,8 +11,8 @@ npm run build
 VERSION=$(cat version.txt)
 echo "🏷  Yeni versiyon ID: $VERSION"
 
-# 3. JSON dosyasını güncelle
-echo "{\"version\": \"$VERSION\", \"url\": \"https://raw.githubusercontent.com/yal42d-debug/kurye-pro/main/updates/KuryePro_v$VERSION.apk\"}" > updates/version.json
+# 3. JSON dosyasını güncelle (jsDelivr CDN kullanarak - Android Dostu)
+echo "{\"version\": \"$VERSION\", \"url\": \"https://cdn.jsdelivr.net/gh/yal42d-debug/kurye-pro@main/updates/KuryePro_v$VERSION.apk\"}" > updates/version.json
 
 # 4. Zip oluştur (MacOS zip komutu)
 echo "🤐 Zip dosyası oluşturuluyor..."

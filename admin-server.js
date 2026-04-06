@@ -144,21 +144,28 @@ app.post('/api/build-publish', async (req, res) => {
 
         console.log(`\n🚀 [v${version}] İÇİN SÜREÇ BAŞLATILIYOR...`);
 
+        // 0. TÜM VERSİYON DOSYALARINI GÜNCELLE (Sync)
+        fs.writeFileSync(VERSION_TEXT_FILE, String(version));
+        const jsdelivrUrl = `https://cdn.jsdelivr.net/gh/yal42d-debug/kurye-pro@main/updates/KuryePro_v${version}.apk`;
+        const vData = { version: String(version), url: jsdelivrUrl };
+        fs.writeFileSync(VERSION_FILE, JSON.stringify(vData, null, 4));
+        
+        const configData = JSON.parse(fs.readFileSync(APP_CONFIG_FILE, 'utf8'));
+        configData.force_update_min_version = String(version);
+        fs.writeFileSync(APP_CONFIG_FILE, JSON.stringify(configData, null, 4));
+
         // 1. Yetki ve İzin Ver ve Eski APK'ları temizle
         const permissionCmd = `chmod +x ./publish_update.sh && chmod +x ./android/gradlew && rm updates/*.apk || true`;
         
-        // 2. Web Build (Vite artık version.txt'den otomatik alıyor)
-        // Not: publish_update.sh içinde de npm run build var, burada tekrara gerek yok
+        // 2. Web Build
         const webBuildCmd = `./publish_update.sh`;
         
-        // 3. Android Build ve APK Kopyalama
-        // ÖNEMLİ: cd android yaptıktan sonra cd .. ile geri dönmeliyiz ki sonraki git komutları kök dizinde çalışsın
+        // 3. Android Build
         const apkBuildCmd = `npx cap sync && cd android && ./gradlew clean && ./gradlew assembleDebug && cp app/build/outputs/apk/debug/app-debug.apk ../updates/KuryePro_v${version}.apk && cd ..`;
 
-        // 4. GitHub Push (Daha sağlam hale getirildi)
-        const gitPushCmd = `git add . && (git commit -m "🚀 Auto-Build: Version ${version}" || true) && git push origin main`;
+        // 4. GitHub Push
+        const gitPushCmd = `git add . && (git commit -m "🚀 Auto-Build: v${version}" || true) && git push origin main`;
 
-        // Tüm komutları sırayla çalıştır
         const fullCommand = `${permissionCmd} && ${webBuildCmd} && ${apkBuildCmd} && ${gitPushCmd}`;
 
         console.log("🛠️ Komutlar çalıştırılıyor, lütfen bekleyin (gradle derlemesi sürebilir)...");
