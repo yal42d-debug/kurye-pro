@@ -18,6 +18,13 @@ function App() {
       bindAppGlobals();
       setBodyClass();
       initApp();
+
+      // Dinamik Sürüm Bilgisini Yaz (Giriş ve Header)
+      const vText = `v${APP_VERSION_CODE}`;
+      const hVer = document.getElementById('appHeaderVersion');
+      const lVer = document.getElementById('loginVersionDisp');
+      if (hVer) hVer.textContent = vText;
+      if (lVer) lVer.textContent = vText;
     } catch (e) {
       console.error("Init Error", e);
     }

@@ -1,18 +1,9 @@
 <!-- LOGIN EKRANI (Açılışta Engelleme İçin) -->
 <div id="loginOverlay"
     class="fixed inset-0 z-[999] bg-[#0f172a] flex flex-col items-center justify-center p-6 text-center animate-fade-in">
-    <div class="mb-8 relative group">
-        <div
-            class="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200">
-        </div>
-        <div
-            class="relative w-24 h-24 bg-slate-900 rounded-full flex items-center justify-center border border-white/10 shadow-2xl">
-            <i class="fa-solid fa-shield-halved text-4xl text-indigo-500"></i>
-        </div>
+    <div class="mb-14">
+        <span id="loginVersionDisp" class="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs font-mono text-gray-500 uppercase tracking-[0.4em] leading-none">...</span>
     </div>
-
-    <h2 id="loginTitle" class="text-2xl font-black text-white mb-2 tracking-tight">Kurye Pro</h2>
-    <p class="text-gray-400 text-sm mb-8 max-w-xs mx-auto">Devam etmek için Google hesabınız ile oturum açın.</p>
 
     <div class="w-full max-w-xs space-y-4">
         <button onclick="attemptLogin()" id="btnLoginBtn"
@@ -20,10 +11,6 @@
             <i class="fa-brands fa-google text-red-600 text-xl"></i>
             GOOGLE İLE GİRİŞ YAP
         </button>
-    </div>
-
-    <div class="mt-8 pt-8 border-t border-white/5 w-full max-w-xs">
-        <p class="text-[10px] text-gray-500 font-mono" id="deviceInfoText">Cihaz Doğrulanıyor...</p>
     </div>
 </div>
 
@@ -149,13 +136,7 @@
 <!-- Header -->
 <div class="glass-header sticky top-0 z-40 px-4">
     <div class="max-w-md mx-auto flex justify-between items-center">
-        <h1 class="font-bold text-lg text-white flex items-center gap-2 tracking-tight">
-            <div
-                class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-500/20">
-                <i class="fa-solid fa-motorcycle text-white text-sm"></i>
-            </div>
-            Kurye Pro V34
-        </h1>
+        <span id="appHeaderVersion" class="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-[10px] font-mono text-gray-400">...</span>
         <div id="headerTools" class="flex items-center gap-3">
 
             <button onclick="toggleSettings()"
