@@ -12,7 +12,7 @@ VERSION=$(cat version.txt)
 echo "🏷  Yeni versiyon ID: $VERSION"
 
 # 3. JSON dosyasını güncelle
-echo "{\"version\": \"$VERSION\", \"url\": \"https://raw.githubusercontent.com/yal42d-debug/kurye_pro/main/updates/KuryePro_v$VERSION.apk\"}" > updates/version.json
+echo "{\"version\": \"$VERSION\", \"url\": \"https://raw.githubusercontent.com/yal42d-debug/kurye-pro/main/updates/KuryePro_v$VERSION.apk\"}" > updates/version.json
 
 # 4. Zip oluştur (MacOS zip komutu)
 echo "🤐 Zip dosyası oluşturuluyor..."
