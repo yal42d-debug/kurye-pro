@@ -90,8 +90,11 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
+  const [downloadStarted, setDownloadStarted] = useState(false);
+
   const handleUpdateClick = async () => {
     if (!updateAvailable) return;
+    setDownloadStarted(true);
     // Download fix: Use system browser for cleaner APK download completion
     await Browser.open({ 
         url: updateAvailable.url,
@@ -109,35 +112,69 @@ function App() {
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           backgroundColor: '#0f172a',
-          color: 'white', padding: '40px',
+          color: 'white', padding: '30px',
           zIndex: 1000000, display: 'flex', flexDirection: 'column',
           alignItems: 'center', justifyContent: 'center',
-          textAlign: 'center'
+          textAlign: 'center',
+          background: 'radial-gradient(circle at center, #1e293b 0%, #0f172a 100%)'
         }}>
-          <div style={{ fontSize: '80px', marginBottom: '20px' }}>{updateAvailable.forced ? '🚫' : '🎁'}</div>
-          <h1 style={{ fontSize: '24px', fontWeight: '900', marginBottom: '10px' }}>
-            {updateAvailable.forced ? 'ZORUNLU GÜNCELLEME' : 'YENİ SÜRÜM MEVCUT'}
-          </h1>
-          <p style={{ opacity: 0.7, marginBottom: '30px', maxWidth: '300px' }}>
-            {updateAvailable.forced ? updateAvailable.msg : `Size daha iyi hizmet verebilmek için v${updateAvailable.version} yayınlandı.`}
-          </p>
-          <button
-            onClick={handleUpdateClick}
-            style={{
-              backgroundColor: '#6366f1', color: 'white', border: 'none',
-              padding: '15px 40px', borderRadius: '15px',
-              fontWeight: 'bold', fontSize: '18px', cursor: 'pointer',
-              boxShadow: '0 10px 20px rgba(99,102,241,0.3)'
-            }}>
-            HEMEN GÜNCELLE
-          </button>
+          <div style={{ 
+            width: '80px', height: '80px', 
+            backgroundColor: updateAvailable.forced ? 'rgba(239, 68, 68, 0.1)' : 'rgba(99, 102, 241, 0.1)',
+            borderRadius: '25px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '40px', marginBottom: '24px',
+            border: `1px solid ${updateAvailable.forced ? 'rgba(239, 68, 68, 0.2)' : 'rgba(99, 102, 241, 0.2)'}`
+          }}>
+            {updateAvailable.forced ? '🚀' : '✨'}
+          </div>
           
-          {!updateAvailable.forced && (
-             <button onClick={() => setUpdateAvailable(null)} style={{
-               background: 'none', border: 'none', color: '#94a3b8', 
-               marginTop: '20px', fontSize: '14px', textDecoration: 'underline'
-             }}>Daha Sonra</button>
-          )}
+          <h2 style={{ fontSize: '10px', color: '#6366f1', fontWeight: '900', letterSpacing: '4px', marginBottom: '8px', textTransform: 'uppercase' }}>
+            KURYE PRO SİSTEM
+          </h2>
+          
+          <h1 style={{ fontSize: '28px', fontWeight: '900', marginBottom: '12px', tracking: '-1px' }}>
+            {updateAvailable.forced ? 'Kritik Güncelleme' : 'Yeni Sürüm Hazır'}
+          </h1>
+          
+          <p style={{ opacity: 0.6, fontSize: '14px', lineHeight: '1.6', marginBottom: '32px', maxWidth: '280px' }}>
+            {updateAvailable.forced ? updateAvailable.msg : `Performans iyileştirmeleri içeren v${updateAvailable.version} sürümü yayınlandı.`}
+          </p>
+
+          <div style={{ width: '100%', maxWidth: '280px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <button
+                onClick={handleUpdateClick}
+                style={{
+                  width: '100%',
+                  backgroundColor: downloadStarted ? '#1e293b' : '#6366f1', 
+                  color: 'white', border: 'none',
+                  padding: '18px', borderRadius: '18px',
+                  fontWeight: '900', fontSize: '15px', cursor: 'pointer',
+                  boxShadow: downloadStarted ? 'none' : '0 10px 25px rgba(99,102,241,0.4)',
+                  transition: 'all 0.3s ease'
+                }}>
+                {downloadStarted ? 'İNDİRME BAŞLATILDI' : 'ŞİMDİ GÜNCELLE'}
+            </button>
+            
+            {downloadStarted && (
+               <div style={{ 
+                 marginTop: '8px', padding: '16px', 
+                 backgroundColor: 'rgba(255, 255, 255, 0.03)', 
+                 borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.05)' 
+               }}>
+                  <p style={{ fontSize: '11px', color: '#94a3b8', lineHeight: '1.5', margin: 0 }}>
+                    <strong style={{ color: '#fbbf24', display: 'block', marginBottom: '4px' }}>⚠️ ÖNEMLİ NOT:</strong>
+                    Tarayıcınızda "Dosya zararlı olabilir" uyarısı çıkarsa <b>"Yine de indir"</b> seçeneğine tıklayın. Bu uyarı Google Play dışındaki tüm uygulamalarda standarttır.
+                  </p>
+               </div>
+            )}
+
+            {!updateAvailable.forced && !downloadStarted && (
+               <button onClick={() => setUpdateAvailable(null)} style={{
+                 background: 'none', border: 'none', color: '#475569', 
+                 marginTop: '8px', fontSize: '13px', fontWeight: 'bold'
+               }}>Daha Sonra Hatırlat</button>
+            )}
+          </div>
         </div>
       )}
       <div style={{
