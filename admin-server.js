@@ -95,7 +95,7 @@ app.post('/api/config', async (req, res) => {
         if (latest_version !== undefined) {
             const versionData = { 
                 version: String(latest_version), 
-                url: apk_url || "https://raw.githubusercontent.com/yal42d-debug/kurye_pro/main/updates/KuryePro_v" + latest_version + ".apk"
+                url: apk_url || "https://raw.githubusercontent.com/yal42d-debug/kurye-pro/main/updates/KuryePro_v" + latest_version + ".apk"
             };
             fs.writeFileSync(VERSION_FILE, JSON.stringify(versionData, null, 4));
             fs.writeFileSync(VERSION_TEXT_FILE, String(latest_version));

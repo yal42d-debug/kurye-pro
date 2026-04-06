@@ -3,7 +3,7 @@ import { loginWithGoogle, handleRedirectResult, checkUserStatus, logoutUser, aut
 
 // Mevcut şifreli veri adresi
 const REPO_USER = 'yal42d-debug';
-const REPO_NAME = 'kurye_pro';
+const REPO_NAME = 'kurye-pro';
 const BASE_URL = `https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/updates`;
 
 // 1. Erişim Kontrolü
