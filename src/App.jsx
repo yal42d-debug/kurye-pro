@@ -9,7 +9,7 @@ function App() {
 
   useEffect(() => {
     // --- APP VERSION SETTINGS ---
-    const APP_VERSION_CODE = 45; // Bu APK'nın sürümü
+    const APP_VERSION_CODE = 46; // Bu APK'nın sürümü
     
     // 1. App Logic Init
     try {

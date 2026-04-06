@@ -574,16 +574,26 @@
                             <span class="badge badge-blue">ADIM 1: CANLI AYARLAR</span>
                         </div>
                         <div class="step-content">
-                            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 20px; margin-bottom: 15px;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 20px; margin-bottom: 15px;">
                                 <div class="form-group">
                                     <label class="form-label">Min. Versiyon Kodu</label>
                                     <input type="number" class="form-input" id="minVersionInput" placeholder="Örn: 45">
-                                    <div class="form-helper">Bu sayının altındaki APK'lar açılışta güncellenmeye zorlanır.</div>
+                                    <div class="form-helper">Bu sayının altındakiler güncellenmeye zorlanır.</div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Yayınlanan En Son Sürüm</label>
+                                    <input type="number" class="form-input" id="latestVersionInput" placeholder="Örn: 46">
+                                    <div class="form-helper">Bildirimde görünen sürüm (version.json).</div>
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Giriş / Karşılama Mesajı</label>
                                     <input type="text" class="form-input" id="welcomeMsgInput" placeholder="KuryePro Sistemine Hoşgeldiniz...">
                                 </div>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 15px;">
+                                <label class="form-label">APK İndirme Linki (URL)</label>
+                                <input type="text" class="form-input" id="apkUrlInput" placeholder="https://raw.githubusercontent.com/...">
+                                <div class="form-helper">Eğer boş bırakırsanız sistem otomatik GitHub linki oluşturur.</div>
                             </div>
                             <div style="display: flex; justify-content: flex-end;">
                                 <button class="btn btn-primary" onclick="saveAppConfig()" style="padding: 10px 25px;">
@@ -597,16 +607,16 @@
                     <div class="step-card step-warning">
                         <div class="step-header">
                             <div class="step-number" style="background: #f59e0b; color: white;">2</div>
-                            <div class="step-title">Veri Senkronizasyonu (v45)</div>
+                            <div class="step-title">Veri Senkronizasyonu (Güncel)</div>
                             <span class="badge badge-gray">ADIM 2: GEÇİŞ</span>
                         </div>
                         <div class="step-content">
                             <p style="font-size: 0.95rem; color: #475569; margin-bottom: 20px; line-height: 1.5;">
-                                Eski kullanıcıların (`users`) ve bölgelerin (`regions`) verilerini yeni v45 sistemine kopyalar. 
+                                Eski kullanıcıların (`users`) ve bölgelerin (`regions`) verilerini kopyalar. 
                                 <b>Not:</b> Mevcut veriler zarar görmez, sadece kopyalanır.
                             </p>
                             <button class="btn btn-outline" onclick="migrateToV45()" style="width: 100%; border: 2px dashed #f59e0b; padding: 20px; text-align: center; background: #fffcf8; color: #b45309;">
-                                <i class="fa-solid fa-arrows-rotate" style="margin-right: 10px;"></i> Eski Verileri v45'e Aktar (Kopyala)
+                                <i class="fa-solid fa-arrows-rotate" style="margin-right: 10px;"></i> Eski Verileri Güncel Sürüme Aktar (Kopyala)
                             </button>
                         </div>
                     </div>
@@ -620,10 +630,10 @@
                         </div>
                         <div class="step-content">
                             <p style="font-size: 0.95rem; color: #b91c1c; margin-bottom: 15px; font-weight: 500;">
-                                <i class="fa-solid fa-triangle-exclamation"></i> DİKKAT: Bu işlem v44 ve altındaki TÜM kullanıcı ve bölge verilerini KALICI OLARAK SİLER.
+                                <i class="fa-solid fa-triangle-exclamation"></i> DİKKAT: Bu işlem Eski Sürümlerdeki TÜM kullanıcı ve bölge verilerini KALICI OLARAK SİLER.
                             </p>
                             <p style="font-size: 0.85rem; color: #7f1d1d; margin-bottom: 20px; opacity: 0.8;">
-                                Sadece v45 ve üzerinin çalışmasını istediğinizden emin olduğunuzda kullanın.
+                                Sadece yeni altyapıyı kullanan güncel sürümlerin çalışmasını istediğinizden emin olduğunuzda kullanın.
                             </p>
                             <button class="btn btn-danger" onclick="killOldVersions()" style="width: 100%; padding: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">
                                 <i class="fa-solid fa-skull-crossbones"></i> Tüm Eski Sürümleri Kapat (Kill Switch)
@@ -1038,11 +1048,20 @@
         // --- NEW: APP CONFIG LOGIC ---
         window.loadAppConfig = async () => {
             try {
+                // 1. Config Yükle
                 const res = await fetch('/api/config');
                 const data = await res.json();
                 if (data) {
                     document.getElementById('minVersionInput').value = data.force_update_min_version || 0;
                     document.getElementById('welcomeMsgInput').value = data.welcome_message || '';
+                }
+
+                // 2. Sürüm Bilgisi Yükle
+                const vRes = await fetch('/api/version');
+                const vData = await vRes.json();
+                if (vData) {
+                    document.getElementById('latestVersionInput').value = vData.version || '';
+                    document.getElementById('apkUrlInput').value = vData.url || '';
                 }
             } catch (e) { console.error("Config Load Error:", e); }
         };
@@ -1052,6 +1071,8 @@
 
             const minVer = document.getElementById('minVersionInput').value;
             const welMsg = document.getElementById('welcomeMsgInput').value;
+            const latestVer = document.getElementById('latestVersionInput').value;
+            const apkUrl = document.getElementById('apkUrlInput').value;
 
             showLoading(true);
             try {
@@ -1060,12 +1081,14 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         min_version: minVer,
-                        welcome_message: welMsg
+                        welcome_message: welMsg,
+                        latest_version: latestVer,
+                        apk_url: apkUrl
                     })
                 });
                 const result = await res.json();
                 if (result.success) {
-                    alert("Ayarlar başarıyla kaydedildi ve GitHub'a gönderildi.");
+                    alert("Ayarlar ve Sürüm Bilgileri başarıyla kaydedildi ve GitHub'a gönderildi.");
                 } else {
                     alert("Hata: " + result.error);
                 }
@@ -1210,9 +1233,9 @@
         };
 
 
-        // V45 MIGRATION TOOLS
+        // VERSION MIGRATION TOOLS
         window.migrateToV45 = async () => {
-            if (!confirm("Tüm kullanıcıları ve bölgeleri v45 sistemine kopyalamak istiyor musunuz? (Mevcut veriler bozulmaz)")) return;
+            if (!confirm("Tüm kullanıcıları ve bölgeleri güncel sisteme kopyalamak istiyor musunuz? (Mevcut veriler bozulmaz)")) return;
             showLoading(true);
             try {
                 const oldUsers = (await get(ref(db, 'users'))).val();
@@ -1221,19 +1244,19 @@
                 const oldRegions = (await get(ref(db, 'regions'))).val();
                 if (oldRegions) await set(ref(db, 'regions_v45'), oldRegions);
                 
-                alert("Başarılı! Veriler v45 düğümüne kopyalandı. Artık yeni APK ile giriş yapabilirsiniz.");
+                alert("Başarılı! Veriler güncel sürüme kopyalandı. Artık yeni APK ile giriş yapabilirsiniz.");
             } catch (e) { alert("Hata: " + e.message); }
             showLoading(false);
         };
 
         window.killOldVersions = async () => {
-            const ans = await prompt("DİKKAT: Bu işlem v44 ve altındaki TÜM uygulamaları anında devre dışı bırakacaktır. Devam etmek için 'ONAYLA' yazın:");
+            const ans = await prompt("DİKKAT: Bu işlem eski sürümdeki TÜM uygulamaları anında devre dışı bırakacaktır. Devam etmek için 'ONAYLA' yazın:");
             if (ans !== "ONAYLA") return;
             showLoading(true);
             try {
                 await remove(ref(db, 'users'));
                 await remove(ref(db, 'regions'));
-                alert("ESKİ SÜRÜMLER İMHA EDİLDİ. Artık sadece v45 ve üzeri uygulamalar çalışabilir.");
+                alert("ESKİ SÜRÜMLER İMHA EDİLDİ. Artık sadece güncel ve yeni altyapıyı kullanan uygulamalar çalışabilir.");
             } catch (e) { alert("Hata: " + e.message); }
             showLoading(false);
         };

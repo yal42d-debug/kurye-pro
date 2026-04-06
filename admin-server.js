@@ -17,6 +17,8 @@ app.use(express.static('admin_ui')); // UI dosyaları
 
 const DEVICES_FILE = path.join(process.cwd(), 'updates', 'allowed_devices.json');
 const APP_CONFIG_FILE = path.join(process.cwd(), 'updates', 'app_config.json');
+const VERSION_FILE = path.join(process.cwd(), 'updates', 'version.json');
+const VERSION_TEXT_FILE = path.join(process.cwd(), 'version.txt');
 
 // 1. Cihazları Getir
 app.get('/api/devices', (req, res) => {
@@ -81,23 +83,31 @@ app.get('/api/config', (req, res) => {
 // 4. Uygulama Ayarlarını Güncelle (Min Sürüm vb.)
 app.post('/api/config', async (req, res) => {
     try {
-        const { min_version, maintenance_mode, welcome_message } = req.body;
+        const { min_version, welcome_message, latest_version, apk_url } = req.body;
 
-        const data = JSON.parse(fs.readFileSync(APP_CONFIG_FILE, 'utf8'));
+        // 1. app_config.json Güncelle
+        const configData = JSON.parse(fs.readFileSync(APP_CONFIG_FILE, 'utf8'));
+        if (min_version !== undefined) configData.force_update_min_version = String(min_version);
+        if (welcome_message !== undefined) configData.welcome_message = welcome_message;
+        fs.writeFileSync(APP_CONFIG_FILE, JSON.stringify(configData, null, 4));
 
-        // Sadece gelen değerleri güncelle
-        if (min_version !== undefined) data.force_update_min_version = String(min_version);
-        if (welcome_message !== undefined) data.welcome_message = welcome_message;
+        // 2. version.json ve version.txt Güncelle (Sadece veri gelirse)
+        if (latest_version !== undefined) {
+            const versionData = { 
+                version: String(latest_version), 
+                url: apk_url || "https://raw.githubusercontent.com/yal42d-debug/kurye_pro/main/updates/KuryePro_v" + latest_version + ".apk"
+            };
+            fs.writeFileSync(VERSION_FILE, JSON.stringify(versionData, null, 4));
+            fs.writeFileSync(VERSION_TEXT_FILE, String(latest_version));
+            console.log("🏷 Sürüm bilgileri güncellendi:", latest_version);
+        }
 
-        // Dosyaya yaz
-        fs.writeFileSync(APP_CONFIG_FILE, JSON.stringify(data, null, 4));
-
-        console.log("⚙️ Ayarlar güncellendi:", data);
+        console.log("⚙️ Ayarlar kaydedildi.");
 
         // GitHub Paylaş
         await gitPushConfig();
 
-        res.json({ success: true, data });
+        res.json({ success: true, config: configData });
 
     } catch (err) {
         console.error(err);
@@ -105,13 +115,22 @@ app.post('/api/config', async (req, res) => {
     }
 });
 
+// 5. Mevcut Sürüm Bilgilerini Getir
+app.get('/api/version', (req, res) => {
+    try {
+        const data = fs.readFileSync(VERSION_FILE, 'utf8');
+        res.json(JSON.parse(data));
+    } catch (err) {
+        res.status(500).json({ error: "Version dosyası okunamadı" });
+    }
+});
+
 function gitPushConfig() {
     return new Promise((resolve, reject) => {
-        console.log("☁️ Config için GitHub güncelleniyor...");
-        exec(`git add updates/app_config.json && git commit -m "Update App Config (Admin Panel)" && git push`, (error, stdout, stderr) => {
+        console.log("☁️ Config ve Sürüm Dosyaları için GitHub güncelleniyor...");
+        exec(`git add updates/app_config.json updates/version.json version.txt && git commit -m "Update Config & Version (Admin Panel)" && git push`, (error, stdout, stderr) => {
             if (error) {
                 console.error(`Git hatası: ${error}`);
-                // Hata olsa bile localde değiştiği için başarılı sayabiliriz ama loglayalım
             }
             console.log(`GitHub Çıktısı: ${stdout}`);
             resolve();
