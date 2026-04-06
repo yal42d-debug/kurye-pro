@@ -150,8 +150,8 @@ app.post('/api/build-publish', async (req, res) => {
         // 2. Web Build
         const webBuildCmd = `./publish_update.sh`;
         
-        // 3. Android Build ve APK Kopyalama
-        const apkBuildCmd = `cd android && ./gradlew assembleRelease && cp app/build/outputs/apk/release/app-release-unsigned.apk ../updates/KuryePro_v${version}.apk`;
+        // 3. Android Build ve APK Kopyalama (Debug sürümü otomatik imzalı olduğu için tercih edildi)
+        const apkBuildCmd = `cd android && ./gradlew assembleDebug && cp app/build/outputs/apk/debug/app-debug.apk ../updates/KuryePro_v${version}.apk`;
 
         // 4. GitHub Push (Tümünü kapsar)
         const gitPushCmd = `git add . && (git commit -m "Auto-Publish: Version ${version}" || true) && git push`;
