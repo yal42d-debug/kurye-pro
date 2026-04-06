@@ -26,7 +26,7 @@ function App() {
     const checkVersion = async () => {
       try {
         const repoUser = 'yal42d-debug';
-        const repoName = 'kurye_pro';
+        const repoName = 'kurye-pro';
         const branch = 'main';
         
         // Fetch Version Info
