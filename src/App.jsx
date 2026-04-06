@@ -7,7 +7,8 @@ import { bindAppGlobals, initApp, setBodyClass } from './logic/appLogic.js';
 function App() {
   const [updateAvailable, setUpdateAvailable] = useState(null);
 
-  const APP_VERSION_CODE = 46; // Bu APK'nın sürümü
+  // Artık sürüm version.txt'den otomatik okunuyor.
+  const APP_VERSION_CODE = parseInt(typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : "47"); 
   
   useEffect(() => {
     // --- APP VERSION SETTINGS ---
