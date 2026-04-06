@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import appHtml from './templates/app.html?raw';
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { FileOpener } from '@capawesome-team/capacitor-file-opener';
 import { bindAppGlobals, initApp, setBodyClass } from './logic/appLogic.js';
 
 function App() {
@@ -95,11 +97,42 @@ function App() {
   const handleUpdateClick = async () => {
     if (!updateAvailable) return;
     setDownloadStarted(true);
-    // Download fix: Use system browser for cleaner APK download completion
-    await Browser.open({ 
-        url: updateAvailable.url,
-        windowName: '_system'
-    });
+    
+    try {
+      // 1. Android ise direkt indirme ve kurma dene
+      if (Capacitor.getPlatform() === 'android') {
+        const filename = `KuryePro_v${updateAvailable.version}.apk`;
+        
+        // Önce varsa eski dosyayı temizle
+        try { await Filesystem.deleteFile({ path: filename, directory: Directory.Cache }); } catch(e){}
+
+        // İndirme işlemini başlat
+        const downloadResult = await Filesystem.downloadFile({
+          url: updateAvailable.url,
+          path: filename,
+          directory: Directory.Cache,
+        });
+
+        // İndirme bitince dosyayı aç (Android yükleyiciyi tetikle)
+        await FileOpener.openFile({
+          path: downloadResult.path,
+          contentType: 'application/vnd.android.package-archive'
+        });
+      } else {
+        // Android değilse eski usul tarayıcı aç
+        await Browser.open({ 
+            url: updateAvailable.url,
+            windowName: '_system'
+        });
+      }
+    } catch (err) {
+      console.error('Sistem güncelleme hatası:', err);
+      // Hata olursa tarayıcıya yönlendir
+      await Browser.open({ 
+          url: updateAvailable.url,
+          windowName: '_system'
+      });
+    }
   };
 
   return (
@@ -162,8 +195,8 @@ function App() {
                  borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.05)' 
                }}>
                   <p style={{ fontSize: '11px', color: '#94a3b8', lineHeight: '1.5', margin: 0 }}>
-                    <strong style={{ color: '#fbbf24', display: 'block', marginBottom: '4px' }}>⚠️ ÖNEMLİ NOT:</strong>
-                    Tarayıcınızda "Dosya zararlı olabilir" uyarısı çıkarsa <b>"Yine de indir"</b> seçeneğine tıklayın. Bu uyarı Google Play dışındaki tüm uygulamalarda standarttır.
+                    <strong style={{ color: '#fbbf24', display: 'block', marginBottom: '4px' }}>⚡ İNDİRME TAMAMLANIYOR...</strong>
+                    İndirme bittiğinde paket yükleyici otomatik açılacaktır. Eğer bir uyarı çıkarsa "Yükle" diyerek devam edebilirsiniz.
                   </p>
                </div>
             )}
