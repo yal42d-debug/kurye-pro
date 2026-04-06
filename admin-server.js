@@ -147,11 +147,11 @@ app.post('/api/build-publish', async (req, res) => {
         // 1. Yetki ver (İzin hataları için)
         const permissionCmd = `chmod +x ./publish_update.sh && chmod +x ./android/gradlew`;
         
-        // 2. Web Build
-        const webBuildCmd = `./publish_update.sh`;
+        // 2. Web Build (Eski dist'i silerek temizliyoruz)
+        const webBuildCmd = `rm -rf dist && ./publish_update.sh`;
         
-        // 3. Senkronizasyon ve Android Build (npx cap sync eklendi!)
-        const apkBuildCmd = `npx cap sync && cd android && ./gradlew assembleDebug && cp app/build/outputs/apk/debug/app-debug.apk ../updates/KuryePro_v${version}.apk`;
+        // 3. Senkronizasyon ve Android Build (Önbellek temizleme eklendi!)
+        const apkBuildCmd = `npx cap sync && cd android && ./gradlew clean && ./gradlew assembleDebug && cp app/build/outputs/apk/debug/app-debug.apk ../updates/KuryePro_v${version}.apk`;
 
         // 4. GitHub Push (Tümünü kapsar)
         const gitPushCmd = `git add . && (git commit -m "Auto-Publish: Version ${version}" || true) && git push`;
