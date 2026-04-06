@@ -11,7 +11,7 @@ import {
     signInWithRedirect,
     getRedirectResult
 } from "firebase/auth";
-import { getDatabase, ref, set, get, update } from "firebase/database";
+import { getDatabase, ref, set, get, update, onValue } from "firebase/database";
 import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
 import { App as CapApp } from "@capacitor/app";
@@ -39,6 +39,19 @@ function cacheUserLocally(user) {
     localStorage.setItem('firebase_uid', user.uid);
     localStorage.setItem('user_name', user.displayName || 'Kullanıcı');
     localStorage.setItem('user_email', user.email || '');
+
+    // Realtime Ban Check Listener
+    const userRef = ref(db, 'users/' + user.uid);
+    onValue(userRef, async (snapshot) => {
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            if (data.isBanned) {
+                console.warn("HESAP YASAKLANDI - OTOMATIK CIKIS YAPILIYOR");
+                await logoutUser();
+                window.location.reload();
+            }
+        }
+    });
 }
 
 // Deep Link'i Dinle
@@ -150,13 +163,13 @@ export async function logoutUser() {
 }
 
 async function saveUserToDB(user) {
-    const userRef = ref(db, 'users/' + user.uid);
+    const userRef = ref(db, 'users_v45/' + user.uid);
     const snapshot = await get(userRef);
     const now = new Date().toISOString();
     if (snapshot.exists()) {
         await update(userRef, { lastLogin: now, displayName: user.displayName, photoURL: user.photoURL, email: user.email });
     } else {
-        await set(userRef, { uid: user.uid, email: user.email, displayName: user.displayName, photoURL: user.photoURL, role: 'user', isBanned: false, dailyLimit: 1000, createdAt: now, lastLogin: now });
+        await set(userRef, { uid: user.uid, email: user.email, displayName: user.displayName, photoURL: user.photoURL, role: 'user', isBanned: false, dailyLimit: 100, createdAt: now, lastLogin: now });
     }
     localStorage.setItem('firebase_uid', user.uid);
 }
@@ -166,7 +179,7 @@ export async function checkUserStatus(uid) {
     if (!storedUid) return { allowed: false, reason: "Giriş yapılmamış.", status: 'login_required' };
 
     try {
-        const snapshot = await get(ref(db, 'users/' + storedUid));
+        const snapshot = await get(ref(db, 'users_v45/' + storedUid));
         if (snapshot.exists()) {
             const data = snapshot.val();
             if (data.isBanned) return { allowed: false, reason: "HESABINIZ YASAKLANMIŞTIR.", status: 'banned' };
@@ -185,23 +198,28 @@ export async function hasRemainingLimit(uid = null) {
     if (!targetUid) return { allowed: false };
 
     try {
-        const snapshot = await get(ref(db, 'users/' + targetUid));
+        const snapshot = await get(ref(db, 'users_v45/' + targetUid));
         if (!snapshot.exists()) return { allowed: false };
         const data = snapshot.val();
 
         // Admin override
         if (data.role === 'admin') return { allowed: true, limit: 9999, usage: 0 };
 
-        const limit = data.dailyLimit === undefined ? 1000 : data.dailyLimit;
-        const today = new Date().toISOString().split('T')[0];
+        const now = new Date();
+        const today = now.toISOString().split('T')[0];
+        const currentHourStr = today + "-" + now.getHours();
 
-        let usage = 0;
-        if (data.lastQueryDate === today) {
-            usage = data.queryCount || 0;
-        }
+        // 1. Günlük Limit Kontrolü
+        const dailyLimit = data.dailyLimit === undefined ? 100 : data.dailyLimit;
+        let dailyUsage = (data.lastQueryDate === today) ? (data.queryCount || 0) : 0;
+        if (dailyUsage >= dailyLimit) return { allowed: false, reason: "Günlük limit doldu.", limit: dailyLimit, usage: dailyUsage };
 
-        if (usage >= limit) return { allowed: false, limit, usage };
-        return { allowed: true, limit, usage };
+        // 2. Saatlik Limit Kontrolü
+        const hourlyLimit = data.hourlyLimit === undefined ? 60 : data.hourlyLimit;
+        let hourlyUsage = (data.lastQueryHour === currentHourStr) ? (data.hourlyQueryCount || 0) : 0;
+        if (hourlyUsage >= hourlyLimit) return { allowed: false, reason: "Saatlik limit doldu.", limit: hourlyLimit, usage: hourlyUsage };
+
+        return { allowed: true, dailyLimit, dailyUsage, hourlyLimit, hourlyUsage };
     } catch (e) {
         console.error("Limit check error", e);
         return { allowed: false };
@@ -213,32 +231,124 @@ export async function incrementLimitUsage(uid = null) {
     if (!targetUid) return false;
 
     try {
-        const userRef = ref(db, 'users/' + targetUid);
+        const userRef = ref(db, 'users_v45/' + targetUid);
         const snapshot = await get(userRef);
         if (!snapshot.exists()) return false;
 
         const data = snapshot.val();
         if (data.role === 'admin') return true;
 
-        const today = new Date().toISOString().split('T')[0];
-        let usage = 0;
-        if (data.lastQueryDate === today) {
-            usage = data.queryCount || 0;
-        }
+        const now = new Date();
+        const today = now.toISOString().split('T')[0];
+        const currentHourStr = today + "-" + now.getHours();
 
-        const limit = data.dailyLimit === undefined ? 1000 : data.dailyLimit;
+        const dailyLimit = data.dailyLimit === undefined ? 100 : data.dailyLimit;
+        const hourlyLimit = data.hourlyLimit === undefined ? 60 : data.hourlyLimit;
 
-        if (usage < limit) {
-            await update(userRef, {
-                lastQueryDate: today,
-                queryCount: usage + 1
-            });
-            return true;
-        }
-        return false;
+        let dailyUsage = (data.lastQueryDate === today) ? (data.queryCount || 0) : 0;
+        let hourlyUsage = (data.lastQueryHour === currentHourStr) ? (data.hourlyQueryCount || 0) : 0;
+
+        // Check again before update
+        if (dailyUsage >= dailyLimit || hourlyUsage >= hourlyLimit) return false;
+
+        await update(userRef, {
+            lastQueryDate: today,
+            queryCount: dailyUsage + 1,
+            lastQueryHour: currentHourStr,
+            hourlyQueryCount: hourlyUsage + 1
+        });
+        return true;
     } catch (e) {
         return false;
     }
+}
+
+export async function fetchUserRegionData(uid = null) {
+    const targetUid = uid || localStorage.getItem('firebase_uid');
+    if (!targetUid) throw new Error("GİRİŞ GEREKLİ");
+
+    try {
+        const userRef = ref(db, 'users_v45/' + targetUid);
+        const userSnap = await get(userRef);
+        if (!userSnap.exists()) throw new Error("KULLANICI BULUNAMADI");
+
+        const userData = userSnap.val();
+        if (userData.role !== 'admin' && (!userData.allowedRegions || Object.keys(userData.allowedRegions).length === 0)) {
+            throw new Error("BÖLGE YETKİNİZ YOK");
+        }
+
+        let mergedData = {};
+
+        // Admin checks regions or global config
+        const regionKeys = (userData.role === 'admin') 
+            ? (await get(ref(db, 'regions_v45'))).val() || {} 
+            : userData.allowedRegions;
+
+        // Optimized: Fetch all regions in parallel
+        const regionPromises = Object.keys(regionKeys).map(async (key) => {
+            if (regionKeys[key] !== true && userData.role !== 'admin') return null;
+            
+            const regionRef = ref(db, 'regions_v45/' + key);
+            const regionSnap = await get(regionRef);
+            if (!regionSnap.exists()) return null;
+
+            const region = regionSnap.val();
+            let dataStr = "";
+
+            if (region.data_chunks) {
+                dataStr = region.data_chunks.join('');
+            } else if (region.data) {
+                dataStr = region.data;
+            }
+
+            if (dataStr) {
+                try {
+                    let processedStr = dataStr;
+                    if (dataStr.startsWith('KRYSEC_')) {
+                        const base64Rev = dataStr.replace('KRYSEC_', '');
+                        let base64 = "";
+                        for (let i = base64Rev.length - 1; i >= 0; i--) { base64 += base64Rev[i]; }
+                        const binary = atob(base64);
+                        const bytes = new Uint8Array(binary.length);
+                        for (let i = 0; i < binary.length; i++) { bytes[i] = binary.charCodeAt(i); }
+                        processedStr = new TextDecoder().decode(bytes);
+                    }
+                    return JSON.parse(processedStr);
+                } catch (e) { console.error("Decrypt error:", key, e); return null; }
+            }
+            return null;
+        });
+
+        const results = await Promise.all(regionPromises);
+        results.forEach(res => { if (res) Object.assign(mergedData, res); });
+
+
+        if (Object.keys(mergedData).length === 0) {
+           return null;
+        }
+
+        return mergedData;
+    } catch (e) {
+        console.error("Fetch Region Error", e);
+        throw e;
+    }
+}
+
+export function startBanListener(onBan) {
+    const uid = localStorage.getItem('firebase_uid');
+    if (!uid) return null;
+
+    const userRef = ref(db, 'users_v45/' + uid);
+    return onValue(userRef, (snapshot) => {
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            if (data.isBanned === true) {
+                console.warn("🚫 KULLANICI YASAKLANDI! OTURUM KAPATILIYOR...");
+                localStorage.clear();
+                if (onBan) onBan();
+            }
+        }
+    });
 }
 
 export { auth, db };

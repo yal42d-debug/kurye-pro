@@ -17,18 +17,21 @@ export function bindAppGlobals() {
         addDialerNumber,
         addFuelEntry,
         addNote,
+        addPerfToPayment,
         addRepeatTransaction,
         backupData,
         calculateFuelConsumption,
         calculateFutureBalance,
+        calculateDetailedPlan,
         calculateMaintenance,
         calculatePerf,
-        calculateProfit,
+        calculateProfit, addExpenseItem, deleteExpenseItem, renderExpenseList,
         callDialerNumber,
-        changeDays,
+
         changeMonth,
         changePacketCount,
         changeSimulationDays,
+        changeDetailDays,
         clearDialerHistory,
         clearFuelForm,
         clearFuelHistory,
@@ -40,6 +43,7 @@ export function bindAppGlobals() {
         deleteCheckItem,
         deleteNote,
         deleteRepeatTransaction,
+        generateDetailedPlanInputs,
         goToToday,
         loadDoors,
         loadStreets,
@@ -68,20 +72,29 @@ export function bindAppGlobals() {
         setNoteType,
         setPerfTime,
         switchChecklist,
+        switchProfitSubView,
         switchTab,
         toggleCheckItem,
-        toggleManualMode,
+
+
+        addOffDay, // Replaces toggleOffDay
+        resetOffDays,
         toggleMapModal,
         toggleSettings,
         toggleSideDock,
-        updateEarningCalculation
+        updateEarningCalculation,
+        
+        // Dynamic Expense Management
+        addExpenseItem,
+        deleteExpenseItem,
+        renderExpenseList
     });
 }
 
 
 
 // --- DEĞİŞKENLER ---
-let daysOff = 4;
+
 let prices = { single: 110, multi: 40, avm: 10, night: 20 };
 let activeDayMode = 'weekday';
 let calendarData = {}; let selectedDate = null; let noteType = 'expense'; let displayedDate = new Date();
@@ -92,7 +105,10 @@ let quickDaysMode = null;
 let accumulatedPayments = {};
 let transactionHistory = [];
 let expenses = { fuel: 250, extra: '', extraVatOnly1: '', extraVatOnly2: '', vatDescription: '', maint: 3000, acc: 1000, other: '' };
-let profitDurationMode = 'day'; // 'day', 'week', 'month'
+let profitDurationMode = 'month'; // Default Month
+let offDayCounts = { weekday: 0, friday: 0, saturday: 0, sunday: 0 };
+let activeProfitSubView = 'expense';
+let customExpenses = [];
 
 // GÜNLÜK BONUS TABLOSU (2026)
 const dailyBonusTiers = [
@@ -120,6 +136,7 @@ let fuelHistory = [];
 
 // --- INIT ---
 export function initApp() {
+    switchProfitSubView('average'); // Default view changed for debugging
     autoSelectDay();
     loadPrices();
     loadExpenses();
@@ -128,6 +145,15 @@ export function initApp() {
     loadGarageData();
     initWeather();
     calculateProfit();
+
+    // Switch to Performance Tab by default
+    setTimeout(() => {
+        const perfBtn = document.querySelector("button[onclick*=\"switchTab('tabPerf'\"]");
+        if (perfBtn) {
+            switchTab('tabPerf', perfBtn);
+        }
+    }, 100);
+
     renderCalendar();
     calculateMaintenance();
     loadAccountData();
@@ -175,31 +201,35 @@ export function initApp() {
 // 1. Duration Mode System (UPDATED to auto-set daysOff)
 function setDurationMode(mode) {
     profitDurationMode = mode;
-    ['btnDurDay', 'btnDurWeek', 'btnDurMonth'].forEach(id => {
-        document.getElementById(id).classList.remove('active');
-        document.getElementById(id).classList.add('inactive');
-    });
-    const activeId = mode === 'day' ? 'btnDurDay' : (mode === 'week' ? 'btnDurWeek' : 'btnDurMonth');
-    document.getElementById(activeId).classList.add('active');
-    document.getElementById(activeId).classList.remove('inactive');
+    const ids = ['btnDurDay', 'btnDurWeek', 'btnDurMonth'];
 
-    // Logic Change: Automatically adjust daysOff based on selected mode
-    if (mode === 'day') {
-        daysOff = 0; // Single day implies 0 days off
-    } else if (mode === 'week') {
-        daysOff = 1; // Standard week implies 1 day off
-    } else {
-        // Month default - Reset to 4 explicitly as per user request
-        daysOff = 4;
+    // Only proceed if buttons exist in DOM
+    const firstBtn = document.getElementById(ids[0]);
+    if (firstBtn) {
+        ids.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                // Reset to Inactive State
+                el.classList.remove('active', 'bg-indigo-600', 'text-white', 'shadow-lg');
+                el.classList.add('inactive', 'text-gray-500', 'hover:text-white', 'hover:bg-white/5');
+            }
+        });
+
+        const activeId = mode === 'day' ? 'btnDurDay' : (mode === 'week' ? 'btnDurWeek' : 'btnDurMonth');
+        const activeEl = document.getElementById(activeId);
+        if (activeEl) {
+            // Set to Active State
+            activeEl.classList.remove('inactive', 'text-gray-500', 'hover:text-white', 'hover:bg-white/5');
+            activeEl.classList.add('active', 'bg-indigo-600', 'text-white', 'shadow-lg');
+        }
     }
-    document.getElementById('daysOffDisplay').innerText = daysOff;
 
     calculateProfit();
 }
 
 // 2. Wednesday Generator for Dropdowns
 function populatePaymentWednesdays() {
-    const selects = ['manualPaymentDate', 'packetPaymentDate'];
+    const selects = ['manualPaymentDate', 'packetPaymentDate', 'perfPaymentDate'];
     const today = new Date();
     const dates = [];
 
@@ -784,58 +814,311 @@ function setDayMode(mode) {
     if (typeof updateEarningCalculation === 'function') updateEarningCalculation();
 }
 
-function changeDays(amount) {
-    daysOff += amount;
-    if (daysOff < 0) daysOff = 0;
-    if (daysOff > 30) daysOff = 30;
-    document.getElementById('daysOffDisplay').innerText = daysOff;
 
-    // Switch to Custom (Month-based) logic
-    profitDurationMode = 'month';
 
-    // UI: Inactive buttons
-    ['btnDurDay', 'btnDurWeek', 'btnDurMonth'].forEach(id => {
-        document.getElementById(id).classList.remove('active');
-        document.getElementById(id).classList.add('inactive');
+// --- NEW: PROFIT SUB-VIEW LOGIC ---
+function switchProfitSubView(viewName) {
+    activeProfitSubView = viewName;
+
+    // Update Buttons (Active Tab Highlight)
+    const btnMap = {
+        'expense': 'btnSubExpense',
+        'average': 'btnSubAverage',
+        'detailed': 'btnSubDetailed'
+    };
+
+    Object.keys(btnMap).forEach(key => {
+        const el = document.getElementById(btnMap[key]);
+        if (el) {
+            if (key === viewName) {
+                el.classList.add('active', 'bg-indigo-600', 'text-white', 'shadow-lg');
+                el.classList.remove('inactive', 'text-gray-500', 'hover:bg-white/5');
+            } else {
+                el.classList.remove('active', 'bg-indigo-600', 'text-white', 'shadow-lg');
+                el.classList.add('inactive', 'text-gray-500', 'hover:bg-white/5');
+            }
+        }
     });
 
+    // Content Visibility
+    const views = {
+        'expense': document.getElementById('viewExpense'),
+        'average': document.getElementById('viewAverage'),
+        'detailed': document.getElementById('viewDetailed')
+    };
+
+    Object.keys(views).forEach(key => {
+        if (views[key]) {
+            if (key === viewName) views[key].classList.remove('hidden');
+            else views[key].classList.add('hidden');
+        }
+    });
+
+    // Re-calculate based on view
+    if (viewName === 'detailed') generateDetailedPlanInputs();
+    
+    loadExpenses();
     calculateProfit();
 }
 
-// --- GELİR HESAPLAMA (GÜNCELLENMİŞ) ---
-function calculateProfit() {
-    let workDays;
-    if (profitDurationMode === 'day') workDays = 1;
-    else if (profitDurationMode === 'week') workDays = 6;
-    else workDays = 30 - daysOff;
+// --- DETAILED PLAN LOGIC ---
+let detailPlanDays = 7;
+function changeDetailDays(amount) {
+    detailPlanDays += amount;
+    if (detailPlanDays < 1) detailPlanDays = 1;
+    if (detailPlanDays > 31) detailPlanDays = 31;
+    document.getElementById('detailDaysDisp').innerText = detailPlanDays;
+    
+    // Listeyi anlık güncelle
+    generateDetailedPlanInputs();
+}
 
-    document.getElementById('calculatedWorkDays').innerText = workDays;
+function generateDetailedPlanInputs() {
+    const container = document.getElementById('detailedPlanContainer');
+    container.innerHTML = '';
 
-    const dailyFuel = parseFloat(document.getElementById('dailyFuel').value) || 0;
-    const extraVat = parseFloat(document.getElementById('extraVat').value) || 0;
-    const extraVatOnly1 = parseFloat(document.getElementById('extraVatOnly1').value) || 0;
-    const extraVatOnly2 = parseFloat(document.getElementById('extraVatOnly2').value) || 0;
-    const maint = parseFloat(document.getElementById('maintCost').value) || 0;
-    const acc = parseFloat(document.getElementById('accCost').value) || 0;
-    const other = parseFloat(document.getElementById('otherCost').value) || 0;
-
-    let gross = 0;
-    const isManual = document.getElementById('manualModeToggle').checked;
-
-    if (isManual) {
-        gross = parseFloat(document.getElementById('manualIncomeVal').value) || 0;
+    // Default to today if not set
+    let startDateInput = document.getElementById('planStartDate').value;
+    let startDate = new Date();
+    if (startDateInput) {
+        startDate = new Date(startDateInput);
     } else {
+        // Set input to today
+        const todayStr = startDate.toISOString().split('T')[0];
+        document.getElementById('planStartDate').value = todayStr;
+    }
+
+    const dayNames = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+
+    for (let i = 0; i < detailPlanDays; i++) {
+        const currentDate = new Date(startDate);
+        currentDate.setDate(startDate.getDate() + i);
+
+        const dayIndex = currentDate.getDay();
+        const dayName = dayNames[dayIndex];
+        const dateStr = currentDate.toLocaleDateString('tr-TR', { day: 'numeric', month: 'numeric' });
+
+        // Determine day type for styling
+        let dayClass = "text-gray-400";
+        if (dayIndex === 5) dayClass = "text-emerald-400"; // Friday
+        else if (dayIndex === 6 || dayIndex === 0) dayClass = "text-indigo-400"; // Weekend
+
+        container.innerHTML += `
+            <div class="bg-slate-800/50 p-3 rounded-xl border border-white/5 space-y-2">
+                <div class="flex justify-between items-center border-b border-white/5 pb-1">
+                    <div class="text-[11px] font-bold ${dayClass} flex items-center gap-2">
+                        <i class="fa-regular fa-calendar"></i> ${dateStr} ${dayName}
+                    </div>
+                    <div class="text-[10px] font-bold text-gray-500" id="detail_info_${i}">Bonus: -</div>
+                </div>
+                
+                <div class="grid grid-cols-4 gap-2">
+                    <div class="col-span-1">
+                        <label class="block text-[8px] text-gray-500 font-bold mb-0.5 text-center">Tekli</label>
+                        <input type="number" id="ds_${i}" class="input-dark p-1.5 rounded-lg text-center text-xs font-bold w-full" placeholder="0" onkeyup="calculateDetailedPlan()">
+                    </div>
+                    <div class="col-span-1">
+                        <label class="block text-[8px] text-gray-500 font-bold mb-0.5 text-center">Çoklu</label>
+                        <input type="number" id="dm_${i}" class="input-dark p-1.5 rounded-lg text-center text-xs font-bold w-full" placeholder="0" onkeyup="calculateDetailedPlan()">
+                    </div>
+                    <div class="col-span-1">
+                        <label class="block text-[8px] text-gray-500 font-bold mb-0.5 text-center">AVM</label>
+                        <input type="number" id="da_${i}" class="input-dark p-1.5 rounded-lg text-center text-xs font-bold w-full" placeholder="-" onkeyup="calculateDetailedPlan()">
+                    </div>
+                    <div class="col-span-1">
+                        <label class="block text-[8px] text-blue-500/70 font-bold mb-0.5 text-center">Gece</label>
+                        <input type="number" id="dn_${i}" class="input-dark p-1.5 rounded-lg text-center text-xs font-bold w-full" placeholder="-" onkeyup="calculateDetailedPlan()">
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-2 items-center">
+                     <div>
+                        <label class="block text-[8px] test-gray-500 font-bold mb-0.5 ml-1">Ort. KM</label>
+                        <div class="relative">
+                            <input type="number" id="dkm_${i}" step="0.1" class="input-dark p-1.5 rounded-lg text-xs font-bold w-full pl-6 text-blue-300" placeholder="0" onkeyup="calculateDetailedPlan()">
+                             <i class="fa-solid fa-gauge-high absolute left-2 top-1/2 -translate-y-1/2 text-[9px] text-blue-500"></i>
+                        </div>
+                     </div>
+                     <div class="bg-slate-900 rounded-lg p-1.5 text-right">
+                        <span class="text-[10px] text-gray-400 block" style="line-height:1">Günlük</span>
+                        <span id="dres_${i}" class="text-sm font-black text-white">0 ₺</span>
+                     </div>
+                </div>
+            </div>
+        `;
+    }
+    document.getElementById('detailedResultArea').classList.remove('hidden');
+    calculateDetailedPlan();
+}
+
+function calculateDetailedPlan() {
+    let totalGross = 0;
+    let startDateInput = document.getElementById('planStartDate').value;
+    let startDate = startDateInput ? new Date(startDateInput) : new Date();
+
+    for (let i = 0; i < detailPlanDays; i++) {
+        const s = parseFloat(document.getElementById(`ds_${i}`).value) || 0;
+        const m = parseFloat(document.getElementById(`dm_${i}`).value) || 0;
+        const a = parseFloat(document.getElementById(`da_${i}`).value) || 0;
+        const n = parseFloat(document.getElementById(`dn_${i}`).value) || 0;
+        const km = parseFloat(document.getElementById(`dkm_${i}`).value) || 0;
+
+        const base = (s * prices.single) + (m * prices.multi);
+        const extra = (a * prices.avm) + (n * prices.night);
+
+        const totalPkt = s + m;
+
+        // KM Calculation
+        const kmRate = getKmRate(km);
+        const kmIncome = totalPkt * km * kmRate;
+
+        // Bonus Logic based on Day
+        const currentDate = new Date(startDate);
+        currentDate.setDate(startDate.getDate() + i);
+        const dayIndex = currentDate.getDay();
+
+        // Fix Sunday calculation (getDay() 0 is Sunday)
+        let mode = 'weekday';
+        if (dayIndex === 5) mode = 'friday';
+        else if (dayIndex === 6) mode = 'saturday';
+        else if (dayIndex === 0) mode = 'sunday';
+
+        const bonusData = getBonusForMode(totalPkt, dailyBonusTiers, mode);
+
+        // bonusData returns a NUMBER from getBonusForMode, NOT an object with .current
+        // Wait, imported getDailyBonus returns object {current, next...}
+        // imported getBonusForMode returns number.
+        // Let's use getDailyBonus to be safe and consistent or check imports.
+        // File line 4 imports both.
+        // Let's use getDailyBonus(total, tiers, mode).current
+
+        const bonusObj = getDailyBonus(totalPkt, dailyBonusTiers, mode);
+        const bonusAmount = bonusObj.current;
+
+        const dailyTotal = base + extra + kmIncome + bonusAmount;
+        totalGross += dailyTotal;
+
+        document.getElementById(`dres_${i}`).innerText = dailyTotal.toLocaleString('tr-TR') + ' ₺';
+
+        // Avoid NaN in display
+        const kmDisp = Math.round(kmIncome) || 0;
+        document.getElementById(`detail_info_${i}`).innerText = `Bonus: ${bonusAmount}₺ / KM: ${kmDisp}₺`;
+    }
+
+    document.getElementById('detailTotalGross').innerText = totalGross.toLocaleString('tr-TR');
+}
+
+
+// --- GELİR HESAPLAMA (REFACTORED) ---
+// --- WEEKLY OFF DAYS LOGIC ---
+function addOffDay(type) {
+    if (offDayCounts[type] === undefined) offDayCounts[type] = 0;
+
+    // Determine Max Limit based on Duration Mode
+    let maxLimit = 5; // Default for Month
+    if (profitDurationMode === 'week') {
+        if (type === 'weekday') maxLimit = 4; // Max 4 weekdays in a week (Assuming 1-2 days maybe working)
+        else maxLimit = 1; // Max 1 Fri/Sat/Sun in a week
+    } else if (profitDurationMode === 'day') {
+        maxLimit = 1;
+    }
+
+    // Increment or Cycle
+    if (offDayCounts[type] < maxLimit) {
+        offDayCounts[type]++;
+    } else {
+        offDayCounts[type] = 0; // Cycle back to 0
+    }
+    updateOffDaysUI();
+    calculateProfit();
+}
+
+function resetOffDays() {
+    offDayCounts = { weekday: 0, friday: 0, saturday: 0, sunday: 0 };
+    updateOffDaysUI();
+    calculateProfit();
+}
+
+function updateOffDaysUI() {
+    // Update Counts and Bars
+    ['weekday', 'friday', 'saturday', 'sunday'].forEach(type => {
+        const count = offDayCounts[type];
+
+        let typeKey = type.charAt(0).toUpperCase() + type.slice(1);
+
+        // Count
+        const countEl = document.getElementById(`count${typeKey}`);
+        if (countEl) countEl.innerText = count;
+
+        // Bar (Visual Fill e.g. 1=20%, 5=100%)
+        const barEl = document.getElementById(`bar${typeKey}`);
+        if (barEl) barEl.style.width = `${Math.min(100, count * 20)}%`;
+    });
+
+    // Update total label sum
+    const total = Object.values(offDayCounts).reduce((a, b) => a + b, 0);
+    const label = document.getElementById('offDaysTotalLabel');
+    if (label) label.innerText = `${total} Gün`;
+}
+
+
+function calculateProfit() {
+    if (activeProfitSubView === 'expense') {
+        const gross = parseFloat(document.getElementById('manualTurnoverInput').value) || 0;
+
+        const VAT_RATE = 0.20;
+        const grossExVat = gross / (1 + VAT_RATE);
+        const outputVat = gross - grossExVat;
+
+        // Dynamic Expenses Calculation (KDV DAHIL tutarlardan)
+        let totalExpenses = 0;
+        let totalInputVat = 0;
+        customExpenses.forEach(exp => {
+            totalExpenses += exp.total;      // KDV Dahil tutar
+            totalInputVat += exp.vat;        // KDV tutarı (indirilebilir)
+        });
+
+        let vatPayable = outputVat - totalInputVat;
+        if (vatPayable < 0) vatPayable = 0;
+
+        const net = gross - totalExpenses - vatPayable;
+
+        document.getElementById('resGross').innerText = gross.toLocaleString('tr-TR');
+        document.getElementById('resExpenses').innerText = totalExpenses.toLocaleString('tr-TR');
+        document.getElementById('resVatDeductions').innerText = totalInputVat.toLocaleString('tr-TR');
+        document.getElementById('resVat').innerText = vatPayable.toLocaleString('tr-TR');
+        document.getElementById('resNet').innerText = net.toLocaleString('tr-TR');
+
+        renderExpenseList();
+    } else if (activeProfitSubView === 'average') {
+        // EXISTING LOGIC for Packet Input
+
+
         const s = parseFloat(document.getElementById('single').value) || 0;
         const m = parseFloat(document.getElementById('multi').value) || 0;
         const a = parseFloat(document.getElementById('avm').value) || 0;
         const n = parseFloat(document.getElementById('night').value) || 0;
-        const avgKm = parseFloat(document.getElementById('avgKmProfit').value) || 0;
+
+        const inputK = document.getElementById('avgKmProfit');
+        // Fix: Read settings from localStorage to avoid ReferenceError
+        let savedAvgKm = 3.5;
+        try {
+            const saved = localStorage.getItem('userSettings');
+            if (saved) savedAvgKm = JSON.parse(saved).avgKm || 3.5;
+        } catch (e) {
+            console.error('Error reading settings', e);
+        }
+
+        const avgKm = inputK ? (parseFloat(inputK.value) || 0) : savedAvgKm;
 
         const kmRate = getKmRate(avgKm);
-        if (avgKm > 0) {
-            document.getElementById('profitKmInfo').style.display = 'block';
-            document.getElementById('profitKmRate').innerText = `${kmRate} TL/km`;
-        } else document.getElementById('profitKmInfo').style.display = 'none';
+        const kmInfoEl = document.getElementById('profitKmInfo');
+        if (kmInfoEl) {
+            if (avgKm > 0) {
+                kmInfoEl.style.display = 'block';
+                document.getElementById('profitKmRate').innerText = `${kmRate} TL/km`;
+            } else kmInfoEl.style.display = 'none';
+        }
 
         const totalPackets = s + m;
         const kmIncome = totalPackets * avgKm * kmRate;
@@ -851,6 +1134,65 @@ function calculateProfit() {
         document.getElementById('dispTotalPackets').innerText = totalPackets;
         document.getElementById('bonusAmount').innerText = currentBonus.toLocaleString('tr-TR');
 
+        // SMART CALCULATION: Iterative Day-by-Day from Today
+        // Logic: Start from today, iterate for 'workDays' count consecutively (no breaks).
+
+        let totalGrossPeriod = 0;
+        let currentDate = new Date(); // Start from today
+        let daysToSimulate = 0;
+
+        if (profitDurationMode === 'month') daysToSimulate = 30; // Calendar Month
+        else if (profitDurationMode === 'week') daysToSimulate = 7; // Calendar Week
+        else daysToSimulate = 1;
+
+        let actualWorkDays = 0;
+
+        // Create a copy of counts to modify during simulation
+        let tempCounts = { ...offDayCounts };
+
+        for (let i = 0; i < daysToSimulate; i++) {
+            // Determine day index
+            const dayIdx = currentDate.getDay();
+
+            let mode = 'weekday';
+            if (dayIdx === 5) mode = 'friday';
+            else if (dayIdx === 6) mode = 'saturday';
+            else if (dayIdx === 0) mode = 'sunday';
+
+            // CHECK OFF DAY (If user has quota for this day type)
+            if (tempCounts[mode] > 0) {
+                // Skip income calculation (Active Off Day)
+                tempCounts[mode]--;
+            } else {
+                // Working Day
+                actualWorkDays++;
+
+                // Calculate bonus for this specific day
+                const bonus = getDailyBonus(totalPackets, dailyBonusTiers, mode).current;
+
+                // Daily Total = Fixed (Base + Extra + Km) + Bonus
+                totalGrossPeriod += (fixedDailyIncome + bonus);
+            }
+
+            // Move to next day (ALWAYS)
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+
+        document.getElementById('avgTotalGross').innerText = totalGrossPeriod.toLocaleString('tr-TR');
+
+        // Update Actual Work Days Display
+        if (document.getElementById('calculatedWorkDays')) {
+            document.getElementById('calculatedWorkDays').innerText = actualWorkDays;
+        }
+
+        // Update info text
+        const todayStr = new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
+        const infoEl = document.getElementById('calculatedWorkDaysInfo');
+        if (infoEl) {
+            infoEl.innerHTML = `<span class="text-indigo-400 font-bold">${todayStr}</span>'den itibaren <span class="text-gray-400">${daysToSimulate} Gün</span> (<span class="text-white font-bold">${actualWorkDays} İş Günü</span>)`;
+        }
+
+        // Bonus Bar Logic (remains based on CURRENT day for visual feedback)
         const bonusData = getDailyBonus(totalPackets, dailyBonusTiers, activeDayMode);
         const bar = document.getElementById('bonusBar');
         const nextEl = document.getElementById('nextBonusPkt');
@@ -865,71 +1207,16 @@ function calculateProfit() {
             nextEl.innerText = "MAX";
             document.getElementById('nextTierInfo').innerText = "MAX";
         }
-
-        // AYLIK PROJEKSİYON (Duration logic will override this if not 'month')
-        const bonusWeekday = getBonusForMode(totalPackets, dailyBonusTiers, 'weekday');
-        const bonusFriday = getBonusForMode(totalPackets, dailyBonusTiers, 'friday');
-        const bonusSat = getBonusForMode(totalPackets, dailyBonusTiers, 'saturday');
-        const bonusSun = getBonusForMode(totalPackets, dailyBonusTiers, 'sunday');
-
-        const totalWeekday = fixedDailyIncome + bonusWeekday;
-        const totalFriday = fixedDailyIncome + bonusFriday;
-        const totalSat = fixedDailyIncome + bonusSat;
-        const totalSun = fixedDailyIncome + bonusSun;
-
-        const theoreticalMonthly = (totalWeekday * 18) + (totalFriday * 4) + (totalSat * 4) + (totalSun * 4);
-        const averageDailyIncome = theoreticalMonthly / 30;
-
-        // Duration Adjustment for Gross
-        if (profitDurationMode === 'day') gross = totalDailyDisplayed;
-        else if (profitDurationMode === 'week') gross = averageDailyIncome * workDays;
-        else gross = averageDailyIncome * workDays;
     }
-
-    // Duration Adjustment for Expenses (Logic Update)
-    let effectiveMaint = 0, effectiveAcc = 0;
-    if (profitDurationMode === 'day') {
-        effectiveMaint = 0;
-        effectiveAcc = 0;
-    } else if (profitDurationMode === 'week') {
-        effectiveMaint = maint / 4;
-        effectiveAcc = acc / 4;
-    } else {
-        effectiveMaint = maint;
-        effectiveAcc = acc;
-    }
-
-    // Calculations
-    const VAT = 0.20;
-    let effectiveFuel = dailyFuel;
-    if (profitDurationMode === 'week') effectiveFuel = dailyFuel * 7; // Approx week
-    else if (profitDurationMode === 'month') effectiveFuel = dailyFuel * workDays;
-
-    const effectiveExtraVat = profitDurationMode === 'day' ? extraVat / 30 : (profitDurationMode === 'week' ? extraVat / 4 : extraVat);
-    const effectiveOther = profitDurationMode === 'day' ? other / 30 : (profitDurationMode === 'week' ? other / 4 : other);
-    const effectiveVatOnly = profitDurationMode === 'day' ? (extraVatOnly1 + extraVatOnly2) / 30 : (profitDurationMode === 'week' ? (extraVatOnly1 + extraVatOnly2) / 4 : (extraVatOnly1 + extraVatOnly2));
-
-    const dedExp = effectiveFuel + effectiveExtraVat;
-    const nonDedExp = effectiveMaint + effectiveAcc + effectiveOther;
-    const totalExp = dedExp + nonDedExp + effectiveVatOnly;
-
-    const grossVat = gross - (gross / (1 + VAT));
-    const dedExpVat = dedExp - (dedExp / (1 + VAT));
-    const vatPay = Math.max(0, grossVat - dedExpVat - effectiveVatOnly);
-    const net = gross - totalExp - vatPay;
-
-    document.getElementById('resGross').innerText = gross.toLocaleString('tr-TR', { maximumFractionDigits: 0 });
-    document.getElementById('resExpenses').innerText = totalExp.toLocaleString('tr-TR', { maximumFractionDigits: 0 });
-    document.getElementById('resVatDeductions').innerText = (effectiveVatOnly + dedExpVat).toLocaleString('tr-TR', { maximumFractionDigits: 0 });
-    document.getElementById('resVat').innerText = vatPay.toLocaleString('tr-TR', { maximumFractionDigits: 0 });
-    document.getElementById('resNet').innerText = net.toLocaleString('tr-TR', { maximumFractionDigits: 0 });
 }
+
 
 // --- HIZ / PERFORMANS (GÜNCELLENMİŞ) ---
 function loadPacketCounter() {
     const saved = localStorage.getItem('kurye_packet_counter');
     if (saved) packetCounter = JSON.parse(saved);
-    else packetCounter = { single: 0, multi: 0 };
+    else packetCounter = { single: 0, multi: 0, avm: 0 };
+    if (packetCounter.avm === undefined) packetCounter.avm = 0;
     updatePacketCounterDisplay();
     updatePerfPacketCountFromCounter();
     const instantFuel = localStorage.getItem('kurye_instant_fuel');
@@ -954,7 +1241,7 @@ function changePacketCount(type, amount) {
 async function resetAllCounters() {
     const confirmed = await showCustomConfirm('Tüm paket sayaçlarını sıfırlamak istediğinize emin misiniz?', "Sayaç Sıfırlama");
     if (!confirmed) return;
-    packetCounter = { single: 0, multi: 0 };
+    packetCounter = { single: 0, multi: 0, avm: 0 };
     updatePacketCounterDisplay();
     updatePerfPacketCountFromCounter();
     localStorage.setItem('kurye_instant_fuel', 250);
@@ -967,6 +1254,7 @@ async function resetAllCounters() {
 function updatePacketCounterDisplay() {
     document.getElementById('counterSingle').textContent = packetCounter.single;
     document.getElementById('counterMulti').textContent = packetCounter.multi;
+    if (document.getElementById('counterAvm')) document.getElementById('counterAvm').textContent = packetCounter.avm || 0;
     document.getElementById('totalPacketsCounter').textContent = packetCounter.single + packetCounter.multi;
 }
 
@@ -989,9 +1277,11 @@ function updateEarningCalculation() {
     const earnKm = totalPackets * avgKm * kmRate;
     const earnS = singleCount * prices.single;
     const earnM = multiCount * prices.multi;
+    const avmCount = packetCounter.avm || 0;
+    const earnAvm = avmCount * prices.avm; // 10 TL usually
     const bonusData = getDailyBonus(totalPackets, dailyBonusTiers, activeDayMode);
     const earnBonus = bonusData.current;
-    const totalEarn = earnS + earnM + earnKm + earnBonus;
+    const totalEarn = earnS + earnM + earnKm + earnBonus + earnAvm;
     const incomeWithoutVat = totalEarn / (1 + vatRate);
     const vatOnIncome = totalEarn - incomeWithoutVat;
     const fuelExpense = parseFloat(document.getElementById('perfFuelInput')?.value) || 0;
@@ -1003,8 +1293,10 @@ function updateEarningCalculation() {
 
     document.getElementById('singleCountDisplay').innerText = singleCount;
     document.getElementById('multiCountDisplay').innerText = multiCount;
+    if (document.getElementById('avmCountDisplay')) document.getElementById('avmCountDisplay').innerText = avmCount;
     document.getElementById('earnSingle').innerText = earnS + " ₺";
     document.getElementById('earnMulti').innerText = earnM + " ₺";
+    if (document.getElementById('earnAvm')) document.getElementById('earnAvm').innerText = earnAvm + " ₺";
     document.getElementById('kmUnitPriceDisp').innerText = kmRate + " TL/Km";
     document.getElementById('perfKmEarnings').innerText = earnKm.toFixed(0) + " ₺";
     document.getElementById('earnBonus').innerText = earnBonus + " ₺";
@@ -1048,27 +1340,79 @@ function loadPrices() {
     });
 }
 function loadExpenses() {
-    const s = localStorage.getItem('kurye_expenses');
-    if (s) expenses = JSON.parse(s);
-    document.getElementById('dailyFuel').value = expenses.fuel;
-    document.getElementById('extraVat').value = expenses.extra;
-    document.getElementById('extraVatOnly1').value = expenses.extraVatOnly1;
-    document.getElementById('extraVatOnly2').value = expenses.extraVatOnly2;
-    document.getElementById('vatDescription').value = expenses.vatDescription;
-    document.getElementById('maintCost').value = expenses.maint;
-    document.getElementById('accCost').value = expenses.acc;
-    document.getElementById('otherCost').value = expenses.other;
+    // Load dynamic expense list from localStorage
+    const list = localStorage.getItem('kurye_custom_expenses');
+    if (list) customExpenses = JSON.parse(list);
+    else customExpenses = [];
+
+    renderExpenseList();
 }
 function saveExpenses() {
-    expenses.fuel = parseFloat(document.getElementById('dailyFuel').value) || 0;
-    expenses.extra = parseFloat(document.getElementById('extraVat').value) || 0;
-    expenses.extraVatOnly1 = parseFloat(document.getElementById('extraVatOnly1').value) || 0;
-    expenses.extraVatOnly2 = parseFloat(document.getElementById('extraVatOnly2').value) || 0;
-    expenses.vatDescription = document.getElementById('vatDescription').value;
-    expenses.maint = parseFloat(document.getElementById('maintCost').value) || 0;
-    expenses.acc = parseFloat(document.getElementById('accCost').value) || 0;
-    expenses.other = parseFloat(document.getElementById('otherCost').value) || 0;
-    localStorage.setItem('kurye_expenses', JSON.stringify(expenses));
+    // Save dynamic expense list to localStorage
+    localStorage.setItem('kurye_custom_expenses', JSON.stringify(customExpenses));
+}
+
+// --- DYNAMIC EXPENSE LIST FUNCTIONS ---
+function addExpenseItem() {
+    const name = document.getElementById('expName').value || "Gider";
+    const amount = parseFloat(document.getElementById('expAmount').value) || 0;
+    const rate = parseFloat(document.getElementById('expVatRate').value) || 0;
+
+    if (amount === 0) return;
+
+    // KDV DAHIL tutar verildiğinde, KDV'yi ayıklamak için
+    // KDV Tutarı = (Toplam Tutar * KDV Oranı) / (100 + KDV Oranı)
+    const vat = (amount * rate) / (100 + rate);
+    const base = amount - vat;
+
+    customExpenses.push({
+        id: Date.now(),
+        name: name,
+        base: base,
+        rate: rate,
+        vat: vat,
+        total: amount
+    });
+
+    document.getElementById('expName').value = '';
+    document.getElementById('expAmount').value = '';
+
+    saveExpenses();
+    calculateProfit();
+}
+
+function deleteExpenseItem(id) {
+    customExpenses = customExpenses.filter(item => item.id !== id);
+    saveExpenses();
+    calculateProfit();
+}
+
+function renderExpenseList() {
+    const container = document.getElementById('expenseListContainer');
+    if (!container) return;
+    container.innerHTML = '';
+
+    customExpenses.forEach(item => {
+        container.innerHTML += `
+            <div class="flex items-center justify-between bg-slate-800/40 p-2.5 rounded-xl border border-white/5 mb-2 hover:bg-slate-800/60 transition-all group">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold text-white">${item.name}</span>
+                        <span class="text-[9px] px-1.5 py-0.5 bg-indigo-500/20 text-indigo-300 rounded-full font-bold">%${item.rate} KDV</span>
+                    </div>
+                    <div class="text-[10px] text-gray-500">
+                        Taban: ${item.base.toLocaleString('tr-TR')} ₺ + KDV: ${item.vat.toLocaleString('tr-TR')} ₺
+                    </div>
+                </div>
+                <div class="text-right flex items-center gap-3">
+                    <div class="text-xs font-black text-white">${item.total.toLocaleString('tr-TR')} ₺</div>
+                    <button onclick="deleteExpenseItem(${item.id})" class="text-gray-600 group-hover:text-red-400 transition-colors p-1.5">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    });
 }
 function savePriceSettings() {
     ['single', 'multi', 'avm', 'night'].forEach(key => {
@@ -1326,7 +1670,7 @@ function calculatePerf() {
     }
 }
 function resetPerfForm() {
-    document.getElementById('perfStartTime').value = '';
+    // document.getElementById('perfStartTime').value = ''; // KEEPS START TIME PERSISTENT
     document.getElementById('perfEndTime').value = '';
     document.getElementById('perfPacketCount').value = '';
     document.getElementById('perfResultArea').classList.add('hidden');
@@ -1340,27 +1684,7 @@ function updateSystemInfo() {
     document.getElementById('dataSize').innerText = (size / 1024).toFixed(2) + " KB";
 }
 // --- ADDED MISSING TOGGLEMANUALMODE FUNCTION ---
-function toggleManualMode() {
-    const isManual = document.getElementById('manualModeToggle').checked;
-    const manualSection = document.getElementById('manualSection');
-    const packetSection = document.getElementById('packetSection');
-    const label = document.getElementById('modeLabel');
 
-    if (isManual) {
-        manualSection.classList.remove('hidden');
-        packetSection.classList.add('hidden');
-        label.innerText = 'MANUEL';
-        label.classList.remove('text-gray-300');
-        label.classList.add('text-emerald-400');
-    } else {
-        manualSection.classList.add('hidden');
-        packetSection.classList.remove('hidden');
-        label.innerText = 'PAKET';
-        label.classList.add('text-gray-300');
-        label.classList.remove('text-emerald-400');
-    }
-    calculateProfit();
-}
 
 function toggleSettings() { document.getElementById('settingsModal').classList.toggle('hidden'); }
 function scrollToResults() { document.getElementById('finalResultCard').scrollIntoView({ behavior: 'smooth' }); }
@@ -1372,13 +1696,7 @@ function switchTab(id, btn) {
     btn.classList.add('active', 'bg-indigo-600', 'text-white', 'shadow-lg');
     btn.classList.remove('text-gray-400');
 
-    // Toggle visibility of Manual switch in header
-    const headerToggle = document.getElementById('headerManualToggle');
-    if (id === 'tabProfit') {
-        headerToggle.classList.remove('hidden');
-    } else {
-        headerToggle.classList.add('hidden');
-    }
+
 }
 
 function clearPacketInputs() { document.getElementById('single').value = ''; document.getElementById('multi').value = ''; calculateProfit(); }
@@ -1428,6 +1746,41 @@ async function addCalculatedToPayment(selectId) {
     localStorage.setItem('kurye_transaction_history', JSON.stringify(transactionHistory));
 
     showVisualSuccess("Başarılı", "Ödeme gününe eklendi.");
+    loadPaymentSystem();
+    renderCalendar();
+}
+
+// --- NEW: SPEED MENU PAYMENT ADDITION ---
+async function addPerfToPayment(selectId) {
+    const netStr = document.getElementById('totalNetEarning').innerText.replace('₺', '').replace(/\./g, '').replace(',', '.').trim();
+    const netVal = parseFloat(netStr);
+
+    if (isNaN(netVal) || netVal <= 0) {
+        showVisualSuccess("Hata", "Net kazanç hesaplanamadı veya 0.");
+        return;
+    }
+
+    const dateStr = document.getElementById(selectId).value;
+    const targetDate = new Date(dateStr);
+
+    const confirmed = await showCustomConfirm(`₺${netVal.toLocaleString('tr-TR')} tutarındaki HIZ MENÜSÜ net kazancı ${targetDate.toLocaleDateString('tr-TR')} ödemesine eklensin mi?`, "Ödeme Ekle");
+    if (!confirmed) return;
+
+    if (!accumulatedPayments[dateStr]) accumulatedPayments[dateStr] = 0;
+    accumulatedPayments[dateStr] += netVal;
+
+    transactionHistory.unshift({
+        date: new Date().toLocaleDateString('tr-TR'),
+        type: 'income',
+        amount: netVal,
+        description: 'Hız Menüsü Kazancı'
+    });
+    if (transactionHistory.length > 5) transactionHistory.pop();
+
+    localStorage.setItem('kurye_accumulated_payments', JSON.stringify(accumulatedPayments));
+    localStorage.setItem('kurye_transaction_history', JSON.stringify(transactionHistory));
+
+    showVisualSuccess("Başarılı", "Hız kazancı ödeme gününe eklendi.");
     loadPaymentSystem();
     renderCalendar();
 }
@@ -1643,18 +1996,44 @@ async function quickSearchAddress(query) {
         return;
     }
 
-    // --- LIMIT CHECK ---
+    // --- YETKİ VE LİMİT CHECK ---
     try {
         let firebaseLib;
         try { firebaseLib = await import('../lib/firebase.js'); } catch (e) { console.error(e); }
 
+        if (firebaseLib && firebaseLib.checkUserStatus) {
+            const uid = localStorage.getItem('firebase_uid');
+            if (!uid) {
+                resultsDiv.innerHTML = `<div class="p-3 text-red-500 text-sm text-center font-bold"><i class="fa-solid fa-lock mb-2"></i><br>GİRİŞ YAPILMADI</div>`;
+                resultsDiv.classList.remove('hidden');
+                return;
+            }
+            const status = await firebaseLib.checkUserStatus(uid);
+            if (!status.allowed) {
+                resultsDiv.innerHTML = `<div class="p-3 text-red-500 text-sm text-center font-bold"><i class="fa-solid fa-lock mb-2"></i><br>ERİŞİM ENGELLENDİ</div>`;
+                resultsDiv.classList.remove('hidden');
+                return;
+            }
+            const u = status.data;
+            if (u.role !== 'admin' && (!u.allowedRegions || Object.keys(u.allowedRegions).length === 0)) {
+                resultsDiv.innerHTML = `<div class="p-3 text-red-500 text-sm text-center font-bold">
+                                            <i class="fa-solid fa-lock mb-2"></i><br>
+                                            BÖLGE YETKİNİZ YOK<br>
+                                            <span class="text-xs text-gray-400 font-normal">Yöneticinizden bölge atanmasını isteyin.</span>
+                                         </div>`;
+                resultsDiv.classList.remove('hidden');
+                return;
+            }
+        }
+
         if (firebaseLib && firebaseLib.hasRemainingLimit) {
             const status = await firebaseLib.hasRemainingLimit();
             if (!status.allowed) {
+                const reasonTitle = status.reason || "SORGU LİMİTİ DOLDU";
                 resultsDiv.innerHTML = `<div class="p-3 text-red-500 text-sm text-center font-bold">
                                             <i class="fa-solid fa-lock mb-2"></i><br>
-                                            GÜNLÜK SORGU LİMİTİ DOLDU<br>
-                                            <span class="text-xs text-gray-400 font-normal">Yarın tekrar deneyin.</span>
+                                            ${reasonTitle}<br>
+                                            <span class="text-xs text-gray-400 font-normal">Sonra tekrar deneyin.</span>
                                          </div>`;
                 resultsDiv.classList.remove('hidden');
                 return;
@@ -1779,6 +2158,16 @@ async function selectQuickResult(result) {
     // --- INCREMENT LIMIT ONLY ON SELECTION ---
     try {
         const firebaseLib = await import('../lib/firebase.js');
+        if (firebaseLib && firebaseLib.checkUserStatus) {
+            const uid = localStorage.getItem('firebase_uid');
+            const status = await firebaseLib.checkUserStatus(uid);
+            if (!status.allowed) return;
+            const u = status.data;
+            if (u.role !== 'admin' && (!u.allowedRegions || Object.keys(u.allowedRegions).length === 0)) {
+                showVisualSuccess("Hata", "Bölge yetkiniz yok.");
+                return;
+            }
+        }
         if (firebaseLib && firebaseLib.incrementLimitUsage) {
             const success = await firebaseLib.incrementLimitUsage();
             if (!success) {
@@ -1867,6 +2256,16 @@ window.attemptLogin = async function (options = {}) {
     }
 }
 
+window.logoutUserApp = async function() {
+    try {
+        const firebaseLib = await import('../lib/firebase.js');
+        if (firebaseLib && firebaseLib.logoutUser) {
+            await firebaseLib.logoutUser();
+            window.location.reload();
+        }
+    } catch (e) { console.error(e); }
+};
+
 // Uygulama Başlangıcında Kontrol
 export async function checkAppAuth() {
     const infoText = document.getElementById('deviceInfoText');
@@ -1919,7 +2318,7 @@ async function toggleMapModal() {
         modal.classList.remove('hidden');
         modal.classList.add('animate-modal-in');
         await ensureAddressData();
-        if (document.getElementById('mapMahalle')?.options.length <= 1) {
+        if (document.getElementById('mapIlce')?.options.length <= 1) {
             initMapModal();
         }
     } else {
@@ -1931,7 +2330,9 @@ async function toggleMapModal() {
         addressData = null;
 
         // Inputları sıfırla
-        document.getElementById('mapMahalle').innerHTML = '<option value="">Seçiniz...</option>';
+        const ilceEl = document.getElementById('mapIlce');
+        if (ilceEl) ilceEl.innerHTML = '<option value="">Önce İlçe Seçiniz</option>';
+        document.getElementById('mapMahalle').innerHTML = '<option value="">Önce İlçe Seçin</option>';
         document.getElementById('mapSokak').innerHTML = '<option value="">Önce Mahalle Seçin</option>';
         document.getElementById('mapKapi').innerHTML = '<option value="">Önce Sokak Seçin</option>';
 
@@ -1944,29 +2345,121 @@ async function toggleMapModal() {
 }
 
 
+// --- AKILLI İLÇE ÇÖZÜCÜ (Smarter Normalization) ---
+function trNormalize(str) {
+    if (!str) return "";
+    return str.toString()
+        .replace(/i/g, 'İ').replace(/ı/g, 'I')
+        .replace(/ğ/g, 'Ğ').replace(/ü/g, 'Ü').replace(/ş/g, 'Ş').replace(/ö/g, 'Ö').replace(/ç/g, 'Ç')
+        .toUpperCase().trim();
+}
+
+const MAH_ILCE_MAP_RAW = {"İSTİKLAL": "KARATAY", "KALENDERHANE": "KARATAY", "KARAASLAN": "KARATAY", "KARADONA": "KARATAY", "KARAKAYA": "KARATAY", "KATRANCI": "KARATAY", "KEÇECİLER": "KARATAY", "KIZÖREN": "KARATAY", "KÖSEALİ": "KARATAY", "KUMKÖPRÜ": "KARATAY", "MENGENE": "KARATAY", "NAKİPOĞLU": "KARATAY", "OBRUK": "KARATAY", "ORTAKONAK": "KARATAY", "OVAKAVAĞI": "KARATAY", "SAKYATAN": "KARATAY", "SARAÇOĞLU": "KARATAY", "SARIYAKUP": "KARATAY", "ŞATIR": "KARATAY", "SEDİRLER": "KARATAY", "SELİMSULTAN": "KARATAY", "ŞEMSİTEBRİZİ": "KARATAY", "SULTAN MESUD": "KARATAY", "SÜRÜÇ": "KARATAY", "TATLICAK": "KARATAY", "ULUBATLIHASAN": "KARATAY", "YAĞLIBAYAT": "KARATAY", "YARMA": "KARATAY", "YAVŞANKUYU": "KARATAY", "YEDİLER": "KARATAY", "YENİCE": "KARATAY", "YENİKENT": "KARATAY", "ZİNCİRLİ": "KARATAY", "ALAKOVA": "MERAM", "ALAVARDI": "MERAM", "ALİ ULVİ KURUCU": "MERAM", "ALPASLAN": "MERAM", "AŞKAN": "MERAM", "ATEŞBAZ VELİ": "MERAM", "AYANBEY": "MERAM", "AYDOĞDU": "MERAM", "AYMANAS": "MERAM", "BAHÇEŞEHİR": "MERAM", "BAYAT": "MERAM", "BORUKTOLU": "MERAM", "BOTSA": "MERAM", "BOYALI": "MERAM", "ÇARIKLAR": "MERAM", "ÇAYBAŞI": "MERAM", "ÇAYIRBAĞI": "MERAM", "ÇOMAKLAR": "MERAM", "ÇOMAKLI": "MERAM", "ÇUKURÇİMEN": "MERAM", "DERE": "MERAM", "DURUNDAY": "MERAM", "ERENKAYA": "MERAM", "EVLİYATEKKE": "MERAM", "GÖDENE": "MERAM", "HADİMİ": "MERAM", "HARMANCIK": "MERAM", "HASANŞEYH": "MERAM", "HATIP": "MERAM", "HATUNSARAY": "MERAM", "HAVZAN": "MERAM", "İKİPINAR": "MERAM", "İNLİCE": "MERAM", "KARAAĞAÇ": "MERAM", "KARADİĞİN": "MERAM", "KARADİĞİNDERESİ": "MERAM", "KARAHÜYÜK": "MERAM", "KAŞINHANI": "MERAM", "KAVAK": "MERAM", "KAYADİBİ": "MERAM", "KAYALI": "MERAM", "KAYIHÜYÜK": "MERAM", "KİLİSTRA": "MERAM", "KIZILÖREN": "MERAM", "KONEVİ": "MERAM", "KOVANAĞZI": "MERAM", "KÖYCEĞİZ": "MERAM", "KOZAĞAÇ": "MERAM", "KUMRALI": "MERAM", "LALEBAHÇE": "MERAM", "MELİKŞAH": "MERAM", "OSMAN GAZİ": "MERAM", "PAMUKCU": "MERAM", "PİREBİ": "MERAM", "SADIKLAR": "MERAM", "SAĞLIK": "MERAM", "SAHİBATA": "MERAM", "SARIKIZ": "MERAM", "SEFAKÖY": "MERAM", "ULUĞBEY": "MERAM", "ULUIRMAK": "MERAM", "UZUNHARMANLAR": "MERAM", "YAKA": "MERAM", "YATAĞAN": "MERAM", "YAYLAPINAR": "MERAM", "YENİBAHÇE": "MERAM", "YENİŞEHİR": "MERAM", "YEŞİLDERE": "MERAM", "YEŞİLTEKKE": "MERAM", "AKADEMİ": "SELÇUKLU", "AKINCILAR": "SELÇUKLU", "AKPINAR": "SELÇUKLU", "AKŞEMSETTİN": "SELÇUKLU", "ARDIÇLI": "SELÇUKLU", "AŞAĞIPINARBAŞI": "SELÇUKLU", "AYDINLIKEVLER": "SELÇUKLU", "BAĞRIKURT": "SELÇUKLU", "BAŞARAKAVAK": "SELÇUKLU", "BEDİR": "SELÇUKLU", "BEYHEKİM": "SELÇUKLU", "BİÇER": "SELÇUKLU", "BİLECİK": "SELÇUKLU", "BİNKONUTLAR": "SELÇUKLU", "BOSNA HERSEK": "SELÇUKLU", "BUHARA": "SELÇUKLU", "BÜYÜKKAYACIK": "SELÇUKLU", "ÇALDERE": "SELÇUKLU", "ÇALTI": "SELÇUKLU", "ÇANDIR": "SELÇUKLU", "CUMHURİYET": "SELÇUKLU", "DAĞDERE": "SELÇUKLU", "DOKUZ": "SELÇUKLU", "DUMLUPINAR": "SELÇUKLU", "EĞRİBAYAT": "SELÇUKLU", "ERENKÖY": "SELÇUKLU", "ESENLER": "SELÇUKLU", "FATİH": "SELÇUKLU", "FERHUNİYE": "SELÇUKLU", "FERİTPAŞA": "SELÇUKLU", "GÜVENÇ": "SELÇUKLU", "HACIKAYMAK": "SELÇUKLU", "HANAYBAŞI": "SELÇUKLU", "HOCACİHAN": "SELÇUKLU", "HOROZLUHAN": "SELÇUKLU", "HÜSAMETTİN ÇELEBİ": "SELÇUKLU", "İHSANİYE": "SELÇUKLU", "IŞIKLAR": "SELÇUKLU", "KALEKÖY": "SELÇUKLU", "KARAÖMERLER": "SELÇUKLU", "KERVAN": "SELÇUKLU", "KILINÇARSLAN": "SELÇUKLU", "KINIK": "SELÇUKLU", "KIZILCAKUYU": "SELÇUKLU", "KOSOVA": "SELÇUKLU", "KÜÇÜKMUHSİNE": "SELÇUKLU", "MALAZGİRT": "SELÇUKLU", "MEHMET AKİF": "SELÇUKLU", "MEYDANKÖY": "SELÇUKLU", "MUSALLA BAĞLARI": "SELÇUKLU", "NİŞANTAŞ": "SELÇUKLU", "PARSANA": "SELÇUKLU", "SAKARYA": "SELÇUKLU", "SALAHATTİN": "SELÇUKLU", "SANCAK": "SELÇUKLU", "SARAYKÖY": "SELÇUKLU", "SARICALAR": "SELÇUKLU", "ŞEKER": "SELÇUKLU", "SELAHADDİNİ EYYUBİ": "SELÇUKLU", "SELÇUK": "SELÇUKLU", "ŞEYH ŞAMİL": "SELÇUKLU", "SİLLE": "SELÇUKLU", "SİLLE AK": "SELÇUKLU", "SIZMA": "SELÇUKLU", "SULUTAS": "SELÇUKLU", "TATKÖY": "SELÇUKLU", "TEPEKENT": "SELÇUKLU", "TÖMEK": "SELÇUKLU", "ULUMUHSİNE": "SELÇUKLU", "YAZIBELEN": "SELÇUKLU", "YAZIR": "SELÇUKLU", "YUKARIPINARBAŞI": "SELÇUKLU", "AZİZİYE": "KARATAY", "BAKIRTOLU": "KARATAY", "BAŞAK": "KARATAY", "BAŞGÖTÜREN": "KARATAY", "BEŞAĞIL": "KARATAY", "BÜYÜKBURNAK": "KARATAY", "ÇATALHÜYÜK": "KARATAY", "ÇENGİLTİ": "KARATAY", "ÇİMENLİK": "KARATAY", "DİVANLAR": "KARATAY", "EMİRGAZİ": "KARATAY", "ERENLER": "KARATAY", "ERLER": "KARATAY", "ESENTEPE": "KARATAY", "FETİH": "KARATAY", "FEVZİÇAKMAK": "KARATAY", "GAZİOSMANPAŞA": "KARATAY", "GÖÇÜ": "KARATAY", "HACIVEYİSZADE": "KARATAY", "HAMZAOĞLU": "KARATAY", "HAYIROĞLU": "KARATAY", "İPEKLER": "KARATAY", "İŞGALAMAN": "KARATAY", "İSMİL": "KARATAY", "ACIDORT": "KARATAY", "AĞSAKLI": "KARATAY", "AKABE": "KARATAY", "AKBAŞ": "KARATAY", "AKÖRENKIŞLA": "KARATAY", "ARAPLAR": "KARATAY"};
+const MAH_ILCE_MAP = {};
+// Pre-normalize keys
+for(let k in MAH_ILCE_MAP_RAW) { MAH_ILCE_MAP[trNormalize(k)] = MAH_ILCE_MAP_RAW[k]; }
+
 function initMapModal() {
-    const select = document.getElementById('mapMahalle');
     if (!addressData) return;
-    if (select.options.length > 1) return; // Already loaded
+    const ilceSelect = document.getElementById('mapIlce');
+    if (!ilceSelect) return;
+    if (ilceSelect.options.length > 1) return; // Already loaded
 
-    select.innerHTML = '<option value="">Seçiniz...</option>';
+    // İlçeleri topla (mahalle.ilce alanından veya MAH_ILCE_MAP'ten)
+    const ilceSet = new Set();
+    Object.values(addressData).forEach(m => {
+        let ilce = m.ilce;
+        if (!ilce) {
+            const mName = trNormalize(m.adi);
+            ilce = MAH_ILCE_MAP[mName] || 'Genel';
+        }
+        ilceSet.add(ilce);
+    });
 
-    // Mahalle listesini oluştur ve sırala
-    const mahalleList = Object.entries(addressData).map(([id, m]) => ({ id, adi: m.adi }));
-    mahalleList.sort((a, b) => a.adi.localeCompare(b.adi, 'tr'));
+    const ilceList = [...ilceSet].sort((a, b) => a.localeCompare(b, 'tr'));
+    ilceSelect.innerHTML = '<option value="">İlçe Seçiniz...</option>';
+    ilceList.forEach(ilce => {
+        const opt = document.createElement('option');
+        opt.value = ilce;
+        opt.textContent = ilce;
+        ilceSelect.appendChild(opt);
+    });
 
-    mahalleList.forEach(m => {
+    // Önceki ilçe seçimini geri yükle
+    const savedIlce = localStorage.getItem('kurye_last_ilce');
+    if (savedIlce && ilceSet.has(savedIlce)) {
+        ilceSelect.value = savedIlce;
+        window.loadMahallesByIlce();
+    }
+}
+
+window.loadMahallesByIlce = function() {
+    const ilceSelect = document.getElementById('mapIlce');
+    const mahalleSelect = document.getElementById('mapMahalle');
+    const streetSelect = document.getElementById('mapSokak');
+    const doorSelect = document.getElementById('mapKapi');
+    const selectedIlce = ilceSelect.value;
+
+    // İlçeyi kaydet
+    if (selectedIlce) localStorage.setItem('kurye_last_ilce', selectedIlce);
+
+    // Alt alanları sıfırla
+    streetSelect.innerHTML = '<option value="">Önce Mahalle Seçin</option>';
+    streetSelect.disabled = true;
+    doorSelect.innerHTML = '<option value="">Önce Sokak Seçin</option>';
+    doorSelect.disabled = true;
+    const mapContainer = document.getElementById('internalMapContainer');
+    if (mapContainer) mapContainer.classList.add('hidden');
+
+    if (!selectedIlce || !addressData) {
+        mahalleSelect.innerHTML = '<option value="">Önce İlçe Seçin</option>';
+        return;
+    }
+
+    // Seçilen ilçenin mahallelerini filtrele
+    const filtered = Object.entries(addressData)
+        .filter(([id, m]) => {
+            let ilce = m.ilce;
+            if (!ilce) {
+                const mName = trNormalize(m.adi);
+                ilce = MAH_ILCE_MAP[mName] || 'Genel';
+            }
+            return ilce === selectedIlce;
+        })
+        .map(([id, m]) => ({ id, adi: m.adi }))
+        .sort((a, b) => a.adi.localeCompare(b.adi, 'tr'));
+
+    mahalleSelect.innerHTML = '<option value="">Mahalle Seçiniz...</option>';
+    filtered.forEach(m => {
         const opt = document.createElement('option');
         opt.value = m.id;
         opt.textContent = m.adi;
-        select.appendChild(opt);
+        mahalleSelect.appendChild(opt);
     });
-}
+
+    // Önceki mahalle seçimini geri yükle (aynı ilçedeyse)
+    const savedMahalle = localStorage.getItem('kurye_last_mahalle');
+    if (savedMahalle && addressData[savedMahalle]) {
+         let mahIlce = addressData[savedMahalle].ilce;
+         if (!mahIlce) {
+             const mName = trNormalize(addressData[savedMahalle].adi);
+             mahIlce = MAH_ILCE_MAP[mName] || 'Genel';
+         }
+         if (mahIlce === selectedIlce) {
+            mahalleSelect.value = savedMahalle;
+            loadStreets();
+         }
+    }
+};
 
 function loadStreets() {
     const mahalleId = document.getElementById('mapMahalle').value;
     const streetSelect = document.getElementById('mapSokak');
     const doorSelect = document.getElementById('mapKapi');
+
+    if (mahalleId) {
+        localStorage.setItem('kurye_last_mahalle', mahalleId);
+    }
 
     streetSelect.innerHTML = '<option value="">Yükleniyor...</option>';
     streetSelect.disabled = true;
@@ -2038,32 +2531,55 @@ function searchAndShowMap() {
         return;
     }
 
-    const data = JSON.parse(doorVal);
-    selectedLocation = data;
+    // --- YETKİ KONTROLÜ ---
+    (async () => {
+        try {
+            const firebaseLib = await import('../lib/firebase.js');
+            const uid = localStorage.getItem('firebase_uid');
+            const status = await firebaseLib.checkUserStatus(uid);
+            if (!status.allowed) { alert("Erişim Reddedildi"); return; }
+            const u = status.data;
+            if (u.role !== 'admin' && (!u.allowedRegions || Object.keys(u.allowedRegions).length === 0)) {
+                alert("BÖLGE YETKİNİZ YOK\nLütfen yöneticinizden bölge tanımlatın.");
+                return;
+            }
 
-    document.getElementById('internalMapContainer').classList.remove('hidden');
-    document.getElementById('googleMapsBtn').classList.remove('hidden');
+            // Limit Kontrolü
+            const limitCheck = await firebaseLib.hasRemainingLimit(uid);
+            if (!limitCheck.allowed) { alert(limitCheck.reason || "Arama limitiniz doldu."); return; }
 
-    // Leaflet Init
-    setTimeout(() => {
-        if (!internalMap) {
-            internalMap = L.map('internalMap').setView([data.lat, data.lon], 18);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '© OpenStreetMap'
-            }).addTo(internalMap);
-        } else {
-            internalMap.invalidateSize();
-            internalMap.setView([data.lat, data.lon], 18);
-        }
+            // Limit Artır
+            await firebaseLib.incrementLimitUsage();
 
-        if (internalMarker) {
-            internalMap.removeLayer(internalMarker);
-        }
+            const data = JSON.parse(doorVal);
+            selectedLocation = data;
 
-        internalMarker = L.marker([data.lat, data.lon]).addTo(internalMap)
-            .bindPopup(`<b>Kapı No: ${data.no}</b>`).openPopup();
-    }, 100);
+            document.getElementById('internalMapContainer').classList.remove('hidden');
+            document.getElementById('googleMapsBtn').classList.remove('hidden');
+
+            // Leaflet Init
+            setTimeout(() => {
+                if (!internalMap) {
+                    internalMap = L.map('internalMap').setView([data.lat, data.lon], 18);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        maxZoom: 19,
+                        attribution: '© OpenStreetMap'
+                    }).addTo(internalMap);
+                } else {
+                    internalMap.invalidateSize();
+                    internalMap.setView([data.lat, data.lon], 18);
+                }
+
+                if (internalMarker) {
+                    internalMap.removeLayer(internalMarker);
+                }
+
+                internalMarker = L.marker([data.lat, data.lon]).addTo(internalMap)
+                    .bindPopup(`<b>Kapı No: ${data.no}</b>`).openPopup();
+            }, 100);
+
+        } catch (err) { console.error(err); }
+    })();
 }
 
 function openExternalMap() {
@@ -2080,10 +2596,25 @@ async function ensureAddressData() {
 
     try {
         const statusEl = document.getElementById('updateStatus');
-        if (statusEl) { statusEl.innerText = "Güvenli bağlantı kuruluyor..."; statusEl.style.display = 'block'; }
+        // Önce hızlıca yerel/gömülü veriyi yükle (Kullanıcı beklemesin)
+        if (!addressData) {
+            const securityLib = await import('../lib/security.js');
+            addressData = await securityLib.fetchLocalData();
+            if (addressData) {
+                console.log("⚡ Offline veri anında hazır.");
+                initMapModal(); // Dropdown'ları anında doldur
+            }
+        }
 
-        addressData = await fetchSecureData();
-        console.log("🔓 Veri Erişim İzni Onaylandı.");
+        // Sonra arka planda Firebase'den en günceli çek (Erişim kontrolü dahil)
+        const firebaseData = await fetchSecureData();
+        if (firebaseData) {
+             addressData = firebaseData;
+             console.log("🔓 Güncel veri Firebase'den alındı.");
+             // Eğer modal açıksa listeleri sessizce tazele
+             const ilceEl = document.getElementById('mapIlce');
+             if (ilceEl && ilceEl.options.length <= 1) initMapModal(); 
+        }
 
         if (statusEl) statusEl.style.display = 'none';
         return true;
@@ -2098,3 +2629,84 @@ async function ensureAddressData() {
     }
 }
 // --- END SECURE HANDLER ---
+
+
+// --- DİNAMİK ARAYÜZ ENJEKTÖRÜ V2 ---
+function injectDynamicExpenseUI() {
+    console.log("🛠 Enjektör Çalışıyor...");
+    const target = document.getElementById("manualTurnoverInput");
+    if (!target) {
+        console.error("❌ Hedef element (manualTurnoverInput) bulunamadı!");
+        return;
+    }
+
+    // Ciro girişinin içinde bulunduğu ana kapsayıcıyı bul (div.px-5.pb-6)
+    const turnoverContainer = target.closest(".px-5.pb-6");
+    if (!turnoverContainer) return;
+
+    // Hemen arkasından gelen "Gider & KDV Yönetimi" kartını bul
+    const oldExpenseCard = turnoverContainer.querySelector(".card.p-5.space-y-4.mt-4");
+    if (oldExpenseCard) {
+        console.log("✅ Eski kart bulundu, temizleniyor...");
+        oldExpenseCard.innerHTML = `
+            <div class="flex justify-between items-center border-b border-white/5 pb-3">
+                <h2 class="text-xs font-bold text-gray-400 uppercase flex items-center gap-2">
+                    <i class="fa-solid fa-wallet text-indigo-500"></i> GİDER & KDV YÖNETİMİ
+                </h2>
+            </div>
+            
+            <div class="bg-indigo-500/5 rounded-2xl p-4 border border-indigo-500/10">
+                <h3 class="text-[10px] text-indigo-400 font-bold uppercase mb-4 flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span> GİDER EKLE (% KDV DAHİL)
+                </h3>
+                <div class="space-y-3">
+                    <input type="text" id="expName" class="w-full input-dark p-3 rounded-xl text-xs font-semibold" placeholder="Gider Adı (Örn: Ofis Malzemesi)">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="relative">
+                            <input type="number" id="expAmount" class="w-full input-dark p-3 rounded-xl font-bold text-lg" placeholder="Tutar">
+                            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-bold">₺</span>
+                        </div>
+                        <div class="relative">
+                            <select id="expVatRate" class="w-full input-dark p-3 rounded-xl font-bold appearance-none">
+                                <option value="20">%20 KDV</option>
+                                <option value="10">%10 KDV</option>
+                                <option value="1">%1 KDV</option>
+                                <option value="18">%18 KDV</option>
+                                <option value="0">%0 KDV</option>
+                            </select>
+                            <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-indigo-400 pointer-events-none"></i>
+                        </div>
+                    </div>
+                    <button onclick="window.addExpenseItem()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-black rounded-xl transition-all shadow-lg shadow-indigo-500/20 uppercase">LİSTEYE EKLE</button>
+                </div>
+                <div id="expenseListContainer" class="mt-4 space-y-2 max-h-[250px] overflow-y-auto pr-1"></div>
+            </div>
+
+            <div class="bg-emerald-500/5 rounded-2xl p-4 border border-emerald-500/10">
+                <label class="text-[9px] text-gray-400 font-bold block mb-1.5 ml-1 uppercase tracking-widest">Toplam Yakıt (Tutar)</label>
+                <input type="number" id="dailyFuel" class="w-full input-dark p-3 rounded-xl font-bold" placeholder="0" onkeyup="window.calculateProfit()">
+            </div>
+        `;
+        window.renderExpenseList();
+    }
+}
+
+// --- REALTIME BAN LISTENER START ---
+(async () => {
+    try {
+        const firebaseLib = await import('../lib/firebase.js');
+        if (firebaseLib && firebaseLib.startBanListener) {
+            firebaseLib.startBanListener(() => {
+                alert("⛔ HESABINIZ YASAKLANDI!\nUygulama kapatılıyor.");
+                window.location.reload(); 
+            });
+        }
+    } catch (e) { console.warn("Ban listener init failed", e); }
+})();
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => setTimeout(injectDynamicExpenseUI, 800));
+} else {
+    setTimeout(injectDynamicExpenseUI, 800);
+}
+

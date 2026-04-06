@@ -47,24 +47,50 @@ export async function startGoogleLogin(options = {}) {
     return await loginWithGoogle(options);
 }
 
-// 3. Veriyi Çek
+// 3. Veriyi Çek (FULL OPTIMIZED)
 export async function fetchSecureData() {
-    const access = await checkAccess();
-    if (!access.allowed) throw new Error(access.reason);
-
-    const res = await fetch(`${BASE_URL}/secure_db.txt?t=${Date.now()}`);
-    if (!res.ok) throw new Error("Veri indirilemedi.");
-
-    const text = await res.text();
-    const match = text.match(/encryptedData\s*=\s*"([^"]+)"/);
-
-    if (match && match[1]) {
-        const raw = match[1];
-        if (raw.startsWith('KRYSEC_')) {
-            const base64 = raw.replace('KRYSEC_', '').split('').reverse().join('');
-            const jsonStr = decodeURIComponent(escape(window.atob(base64)));
-            return JSON.parse(jsonStr);
+    // Note: Erişim kontrolü fetchUserRegionData içinde zaten yapılmaktadır.
+    
+    // --- TRY FIREBASE REGIONS ---
+    try {
+        const firebaseLib = await import('./firebase');
+        if (firebaseLib && firebaseLib.fetchUserRegionData) {
+            const regionData = await firebaseLib.fetchUserRegionData(localStorage.getItem('firebase_uid'));
+            if (regionData && Object.keys(regionData).length > 0) return regionData;
         }
+    } catch (err) { console.warn("Firebase failed", err); }
+
+    // --- FALLBACK: GitHub (Legacy) ---
+    try {
+        const res = await fetch(`${BASE_URL}/secure_db.txt?t=${Date.now()}`);
+        if (res.ok) {
+            const text = await res.text();
+            const match = text.match(/encryptedData\s*=\s*"([^"]+)"/);
+            if (match && match[1]) {
+                const raw = match[1];
+                if (raw.startsWith('KRYSEC_')) {
+                    const base64 = raw.replace('KRYSEC_', '').split('').reverse().join('');
+                    const jsonStr = decodeURIComponent(escape(window.atob(base64)));
+                    return JSON.parse(jsonStr);
+                }
+            }
+        }
+    } catch(e) {}
+    
+    throw new Error("Veri yüklenemedi.");
+}
+
+export async function fetchLocalData() {
+    try {
+        const dataModule = await import('../data/addressDataEncrypted.js');
+        const encryptedData = dataModule.encryptedData;
+        if (encryptedData && encryptedData.startsWith('KRYSEC_')) {
+             const base64 = encryptedData.replace('KRYSEC_', '').split('').reverse().join('');
+             const jsonStr = decodeURIComponent(escape(window.atob(base64)));
+             return JSON.parse(jsonStr);
+        }
+    } catch(e) { 
+        console.warn("Local bundle fetch failed", e);
+        return null; 
     }
-    throw new Error("Veri formatı hatalı.");
 }
