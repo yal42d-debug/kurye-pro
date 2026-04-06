@@ -1270,9 +1270,11 @@
                 
                 const vRes = await fetch('/api/version');
                 const vData = await vRes.json();
-                if (vData) {
-                    document.getElementById('latestVersionInput').value = vData.version || '';
-                    document.getElementById('apkUrlInput').value = vData.url || '';
+                if (vData && vData.version) {
+                    const currentVer = parseInt(vData.version);
+                    // Bir sonraki sürümü otomatik tahmin et (Kolaylık)
+                    document.getElementById('latestVersionInput').value = currentVer + 1;
+                    document.getElementById('apkUrlInput').value = `https://raw.githubusercontent.com/yal42d-debug/kurye-pro/main/updates/KuryePro_v${currentVer + 1}.apk`;
                 }
             } catch (e) { console.error("Ayarlar yüklenemedi:", e); }
         };

@@ -40,14 +40,15 @@ function cacheUserLocally(user) {
     localStorage.setItem('user_name', user.displayName || 'Kullanıcı');
     localStorage.setItem('user_email', user.email || '');
 
-    // Realtime Ban Check Listener
-    const userRef = ref(db, 'users/' + user.uid);
+    // Realtime Ban Check Listener (v45 Uyumlu)
+    const userRef = ref(db, 'users_v45/' + user.uid);
     onValue(userRef, async (snapshot) => {
         if (snapshot.exists()) {
             const data = snapshot.val();
             if (data.isBanned) {
                 console.warn("HESAP YASAKLANDI - OTOMATIK CIKIS YAPILIYOR");
                 await logoutUser();
+                localStorage.clear();
                 window.location.reload();
             }
         }
