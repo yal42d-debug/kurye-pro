@@ -622,7 +622,7 @@
                             <input type="number" class="form-input" id="sysDaily">
                         </div>
                     <div style="display: flex; justify-content: flex-end; margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 15px;">
-                        <button class="btn btn-primary" onclick="saveAppConfig()">
+                        <button class="btn btn-primary" onclick="saveDefaultLimits()">
                             <i class="fa-solid fa-save"></i> Varsayılan Limitleri Kaydet
                         </button>
                     </div>
@@ -1086,6 +1086,30 @@
             await window.saveAppConfig(false);
         };
 
+        window.saveDefaultLimits = async () => {
+            const daily = document.getElementById('sysDaily').value;
+            const hourly = document.getElementById('sysHourly').value;
+
+            if (!confirm(`Tüm yeni kullanıcılar için limitler ${hourly}/Saat ve ${daily}/Gün olarak güncellenecektir. Onaylıyor musunuz?`)) return;
+
+            showLoading(true);
+            try {
+                const res = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        default_daily_limit: daily,
+                        default_hourly_limit: hourly
+                    })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    alert("Varsayılan limitler başarıyla kaydedildi ve GitHub'a yüklendi.");
+                }
+            } catch (e) { alert("Hata: " + e.message); }
+            showLoading(false);
+        };
+
         window.saveAppConfig = async (silent = false) => {
             if (!silent && !confirm("DİKKAT: Bu değişiklik tüm kullanıcılarda anında etkili olacaktır. Devam edilsin mi?")) return;
 
@@ -1289,10 +1313,10 @@
                 const vRes = await fetch('/api/version');
                 const vData = await vRes.json();
                 if (vData && vData.version) {
-                    const currentVer = parseInt(vData.version);
-                    // Bir sonraki sürümü otomatik tahmin et (Kolaylık)
-                    document.getElementById('latestVersionInput').value = currentVer + 1;
-                    document.getElementById('apkUrlInput').value = `https://raw.githubusercontent.com/yal42d-debug/kurye-pro/main/updates/KuryePro_v${currentVer + 1}.apk`;
+                    const currentVer = vData.version;
+                    // Sadece mevcut sürümü göster (Otomatik artırma kaldırıldı)
+                    document.getElementById('latestVersionInput').value = currentVer;
+                    document.getElementById('apkUrlInput').value = vData.url || `https://raw.githubusercontent.com/yal42d-debug/kurye-pro/main/updates/KuryePro_v${currentVer}.apk`;
                 }
             } catch (e) { console.error("Ayarlar yüklenemedi:", e); }
         };
