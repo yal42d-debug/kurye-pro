@@ -9,8 +9,8 @@ android {
         applicationId "com.kurye.pro"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 80
-        versionName "v80"
+        versionCode 81
+        versionName "v81"
         multiDexEnabled true
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
