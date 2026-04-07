@@ -156,23 +156,36 @@ app.post('/api/build-publish', async (req, res) => {
         configData.force_update_min_version = String(version);
         fs.writeFileSync(APP_CONFIG_FILE, JSON.stringify(configData, null, 4));
 
-        // 1. Yetki ve İzin Ver ve Eski APK'ları temizle
-        const permissionCmd = `chmod +x ./publish_update.sh && chmod +x ./android/gradlew && rm updates/*.apk || true`;
+        // 1. Yetki ver ve 'www' klasörünü temizle (Asset kirliliğini önlemek - Sync hızlanır)
+        const permissionCmd = `rm -rf www && mkdir www && chmod +x ./publish_update.sh && chmod +x ./android/gradlew`;
         
         // 2. Web Build
         const webBuildCmd = `./publish_update.sh`;
         
-        // 3. Android Build (DİKKAT: Hata olursa clean ekliyoruz tekrar)
-        const apkBuildCmd = `npx cap sync && cd android && ./gradlew clean && ./gradlew assembleDebug && cp app/build/outputs/apk/debug/app-debug.apk ../updates/KuryePro_v${version}.apk && cd ..`;
+        // 3. Android Version Update (Bunu JS tarafında yapıyoruz)
+        try {
+            const gradlePath = path.join(process.cwd(), 'android', 'app', 'build.gradle');
+            let content = fs.readFileSync(gradlePath, 'utf8');
+            content = content.replace(/versionCode \d+/, `versionCode ${version}`);
+            content = content.replace(/versionName "[^"]+"/, `versionName "v${version}"`);
+            fs.writeFileSync(gradlePath, content);
+            console.log(`✅ Build.gradle güncellendi: v${version}`);
+        } catch (e) {
+            console.warn("⚠️ build.gradle güncellenemedi, işleme devam ediliyor...");
+        }
 
-        // 4. GitHub Push
+        // 4. Android Build (Hızlandırmak için 'clean' kaldırıldı, sadece sync ve build)
+        const apkBuildCmd = `npx cap sync android && cd android && ./gradlew assembleDebug && cp app/build/outputs/apk/debug/app-debug.apk ../updates/KuryePro_v${version}.apk && cd ..`;
+
+        // 5. GitHub Push
         const gitPushCmd = `git add . && (git commit -m "🚀 Auto-Build: v${version}" || true) && git push origin main`;
 
         const fullCommand = `${permissionCmd} && ${webBuildCmd} && ${apkBuildCmd} && ${gitPushCmd}`;
 
         console.log("🛠️ Komutlar çalıştırılıyor, lütfen bekleyin (gradle derlemesi sürebilir)...");
+        console.log(`Komut: ${fullCommand}`);
 
-        exec(fullCommand, { maxBuffer: 1024 * 1024 * 50 }, (error, stdout, stderr) => {
+        exec(fullCommand, { maxBuffer: 1024 * 1024 * 100 }, (error, stdout, stderr) => {
             if (error) {
                 console.error("❌ Hata Oluştu:", error);
                 console.error("STDOUT:", stdout);

@@ -1068,7 +1068,9 @@
                 if (result.success) {
                     alert(result.message);
                 } else {
-                    alert("Build Hatası: " + result.error);
+                    const errMsg = `Build Hatası: ${result.error}\n\nDetay: ${result.details || "Bilinmiyor"}\n\nSon Loglar:\n${result.stderr_tail || result.stdout_tail || "Log yok."}`;
+                    alert(errMsg);
+                    console.error("BUILD ERROR:", result);
                 }
             } catch (e) { alert("Bağlantı Hatası: " + e.message); }
             showLoading(false);
