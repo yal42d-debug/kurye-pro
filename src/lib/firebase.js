@@ -83,33 +83,47 @@ if (Capacitor.isNativePlatform()) {
 // Native Sign-In Implementation
 async function signInWithGoogleNative() {
     try {
+        console.log("📍 Native Google Login başlatılıyor...");
         const result = await FirebaseAuthentication.signInWithGoogle();
-        if (!result || !result.user) return { success: false, error: "Giriş iptal edildi veya başarısız." };
+        if (!result || !result.user) {
+            console.log("📍 Native Google Login: Kullanıcı iptal etti.");
+            return { success: false, error: "Giriş iptal edildi veya başarısız." };
+        }
 
         let user = result.user;
         const idToken = result.credential?.idToken;
         const accessToken = result.credential?.accessToken;
 
+        console.log("📍 Native Login başarılı, JS SDK senkronizasyonu deneniyor...");
         if (idToken || accessToken) {
             try {
                 const credential = GoogleAuthProvider.credential(idToken || undefined, accessToken || undefined);
                 const authResult = await signInWithCredential(auth, credential);
-                if (authResult?.user) user = authResult.user;
+                if (authResult?.user) {
+                    user = authResult.user;
+                    console.log("✅ JS SDK oturumu başarıyla senkronize edildi.");
+                }
             } catch (err) {
-                console.warn("JS SDK oturumu açılamadı, native kullanıcı ile devam ediliyor.", err);
+                console.warn("⚠️ JS SDK oturumu açılamadı (DB erişimi etkilenebilir):", err);
             }
         }
 
+        console.log("📍 Veritabanı kaydı güncelleniyor...");
         await saveUserToDB(user);
+        
+        console.log("📍 Yerel önbellek güncelleniyor...");
         cacheUserLocally(user);
+        
         return { success: true, user };
     } catch (err) {
-        console.error("Native Google Login Error:", err);
-        let msg = "Native giriş hatası: " + (err.message || String(err));
+        console.error("❌ Native Google Login Hatası:", err);
+        let msg = (err.message || String(err));
         if (String(err).includes("10") || String(err).includes("DEVELOPER_ERROR")) {
             msg = "GİRİŞ HATASI (10): SHA-1 anahtarı Firebase'de kayıtlı değil veya paket ismi hatalı.";
+        } else if (String(err).includes("permission-denied") || String(err).includes("PERMISSION_DENIED")) {
+            msg = "VERİTABANI ERİŞİM HATASI: Güvenlik kuralları veya oturum senkronizasyon sorunu.";
         }
-        return { success: false, error: msg };
+        return { success: false, error: "Native giriş hatası: " + msg };
     }
 }
 
@@ -194,6 +208,9 @@ export async function saveUserToDB(user) {
             console.error("Config fetch error, using fallback limits:", err);
         }
 
+        if (isNaN(dailyLimit)) dailyLimit = 100;
+        if (isNaN(hourlyLimit)) hourlyLimit = 60;
+
         await set(userRef, { 
             uid: user.uid, 
             email: user.email, 
@@ -215,6 +232,12 @@ export async function checkUserStatus(uid) {
     const storedUid = uid || localStorage.getItem('firebase_uid');
     if (!storedUid) return { allowed: false, reason: "Giriş yapılmamış.", status: 'login_required' };
 
+    // EKRAN: Eğer JS SDK henüz oturum açmadıysa DB'ye bakma (Hata 403 önleme)
+    if (!auth.currentUser && !uid) {
+        console.log("📍 SDK oturumu henüz hazır değil, bekleniyor...");
+        return { allowed: false, reason: "Oturum hazırlanıyor...", status: 'auth_pending' };
+    }
+
     try {
         const userRef = ref(db, 'users_v45/' + storedUid);
         const snapshot = await get(userRef);
@@ -234,6 +257,9 @@ export async function checkUserStatus(uid) {
         return { allowed: false, reason: "Kullanıcı kaydı veritabanında aktif değil.", status: 'record_missing' };
     } catch (err) {
         console.error("Status check failed", err);
+        if (String(err).includes("Permission denied") || String(err).includes("PERMISSION_DENIED")) {
+            return { allowed: false, reason: "Veritabanı erişimi engellendi. Lütfen tekrar giriş yapın.", status: 'permission_denied' };
+        }
         return { allowed: false, reason: "Veritabanına ulaşılamıyor.", status: 'network_error' };
     }
 }

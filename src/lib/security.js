@@ -14,10 +14,17 @@ export async function checkAccess() {
     const storedUid = localStorage.getItem('firebase_uid');
     if (storedUid) {
         const status = await checkUserStatus(storedUid);
-        if (status.allowed) {
-            return { allowed: true, user: status.data, status: 'authorized' };
-        } else if (status.status === 'banned') {
-            return { allowed: false, reason: status.reason, status: 'banned' };
+        
+        // Eğer oturum hazır değilse veya yetki hatası varsa hemen reddetme, Firebase'in onAuthStateChanged bekle
+        if (status.status === 'auth_pending' || status.status === 'permission_denied') {
+            console.log(`📍 ${status.status} durumu algılandı, auth akışı bekleniyor...`);
+        } else {
+            if (status.allowed) {
+                return { allowed: true, user: status.data, status: 'authorized' };
+            } else if (status.status === 'banned') {
+                return { allowed: false, reason: status.reason, status: 'banned' };
+            }
+            // Diğer durumlar (not_approved vb) için onAuthStateChanged'a bırakılabilir veya direkt dönülebilir.
         }
     }
 
@@ -32,15 +39,18 @@ export async function checkAccess() {
                 // KURTARMA MANTIĞI: Eğer auth var ama DB kaydı yoksa (silinmişse), otomatik kurtar
                 if (status.status === 'record_missing') {
                     console.log("📍 Kayıt bulunamadı, otomatik kurtarma başlatılıyor...");
-                    await saveUserToDB(user);
-                    status = await checkUserStatus(user.uid); // Tekrar kontrol et
+                    try {
+                        await saveUserToDB(user);
+                        status = await checkUserStatus(user.uid); // Tekrar kontrol et
+                    } catch (dbErr) {
+                        console.error("Kurtarma sırasında DB hatası:", dbErr);
+                        status = { allowed: false, reason: "Kayıt oluşturulamadı: " + dbErr.message, status: 'permission_denied' };
+                    }
                 }
 
                 if (status.allowed) {
                     resolve({ allowed: true, user: status.data, status: 'authorized' });
                 } else {
-                    // OTOMATİK LOGOUT KALDIRILDI: Döngüyü kırmak için oturumu kapatmıyoruz, 
-                    // sadece erişimi reddediyoruz. UI bu durumu 'banned' veya 'not_approved' olarak işleyecek.
                     resolve({ allowed: false, reason: status.reason, status: status.status || 'denied' });
                 }
             } else {
