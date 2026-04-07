@@ -177,6 +177,22 @@ async function saveUserToDB(user) {
     if (snapshot.exists()) {
         await update(userRef, { lastLogin: now, displayName: user.displayName, photoURL: user.photoURL, email: user.email });
     } else {
+        // Yeni kullanıcı için varsayılan limitleri GitHub'dan çek
+        let dailyLimit = 100;
+        let hourlyLimit = 60;
+        
+        try {
+            const configUrl = "https://raw.githubusercontent.com/yal42d-debug/kurye-pro/main/updates/app_config.json";
+            const response = await fetch(configUrl + "?t=" + Date.now());
+            if (response.ok) {
+                const config = await response.json();
+                if (config.default_daily_limit) dailyLimit = parseInt(config.default_daily_limit);
+                if (config.default_hourly_limit) hourlyLimit = parseInt(config.default_hourly_limit);
+            }
+        } catch (err) {
+            console.error("Config fetch error, using fallback limits:", err);
+        }
+
         await set(userRef, { 
             uid: user.uid, 
             email: user.email, 
@@ -185,8 +201,8 @@ async function saveUserToDB(user) {
             role: 'user', 
             isBanned: false, 
             isApproved: false,
-            dailyLimit: 0, 
-            hourlyLimit: 0,
+            dailyLimit: dailyLimit, 
+            hourlyLimit: hourlyLimit,
             createdAt: now, 
             lastLogin: now 
         });

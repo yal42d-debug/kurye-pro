@@ -83,12 +83,14 @@ app.get('/api/config', (req, res) => {
 // 4. Uygulama Ayarlarını Güncelle (Min Sürüm vb.)
 app.post('/api/config', async (req, res) => {
     try {
-        const { min_version, welcome_message, latest_version, apk_url } = req.body;
+        const { min_version, welcome_message, latest_version, apk_url, default_daily_limit, default_hourly_limit } = req.body;
 
         // 1. app_config.json Güncelle
         const configData = JSON.parse(fs.readFileSync(APP_CONFIG_FILE, 'utf8'));
         if (min_version !== undefined) configData.force_update_min_version = String(min_version);
         if (welcome_message !== undefined) configData.welcome_message = welcome_message;
+        if (default_daily_limit !== undefined) configData.default_daily_limit = String(default_daily_limit);
+        if (default_hourly_limit !== undefined) configData.default_hourly_limit = String(default_hourly_limit);
         fs.writeFileSync(APP_CONFIG_FILE, JSON.stringify(configData, null, 4));
 
         // 2. version.json ve version.txt Güncelle (Sadece veri gelirse)

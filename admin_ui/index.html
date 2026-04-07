@@ -615,12 +615,16 @@
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                         <div class="form-group">
                             <label class="form-label">Sistem Saatlik Limit</label>
-                            <input type="number" class="form-input" value="60" id="sysHourly" disabled style="background:#eef2f6; border-color:#e2e8f0;">
+                            <input type="number" class="form-input" id="sysHourly">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Sistem Günlük Limit</label>
-                            <input type="number" class="form-input" value="100" id="sysDaily" disabled style="background:#eef2f6; border-color:#e2e8f0;">
+                            <input type="number" class="form-input" id="sysDaily">
                         </div>
+                    <div style="display: flex; justify-content: flex-end; margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 15px;">
+                        <button class="btn btn-primary" onclick="saveAppConfig()">
+                            <i class="fa-solid fa-save"></i> Varsayılan Limitleri Kaydet
+                        </button>
                     </div>
                 </div>
             </div>
@@ -841,8 +845,8 @@
                         <td>${roleBadge} ${statusBadge}</td>
                         <td>
                             <div style="font-family:monospace; font-size:0.9rem;">
-                               <i class="fa-solid fa-hourglass-half" style="color:#94a3b8; width:15px;"></i> ${u.hourlyLimit || 6} / Saat<br>
-                               <i class="fa-solid fa-calendar-day" style="color:#94a3b8; width:15px;"></i> ${u.dailyLimit || 100} / Gün
+                               <i class="fa-solid fa-hourglass-half" style="color:#94a3b8; width:15px;"></i> ${u.hourlyLimit !== undefined ? u.hourlyLimit : (parseInt(document.getElementById('sysHourly').value) || 60)} / Saat<br>
+                               <i class="fa-solid fa-calendar-day" style="color:#94a3b8; width:15px;"></i> ${u.dailyLimit !== undefined ? u.dailyLimit : (parseInt(document.getElementById('sysDaily').value) || 100)} / Gün
                             </div>
                         </td>
                         <td>
@@ -883,7 +887,14 @@
 
         window.openEditModal = (uid) => {
             const u = allUsers.find(x => x.uid === uid); if (!u) return;
-            document.getElementById('editUid').value = uid; document.getElementById('editName').value = u.displayName || ''; document.getElementById('editHourlyLimit').value = u.hourlyLimit || 6; document.getElementById('editDailyLimit').value = u.dailyLimit || 100; document.getElementById('editIsAdmin').checked = (u.role === 'admin'); document.getElementById('editIsBanned').checked = (u.isBanned === true);
+            const defaultHourly = parseInt(document.getElementById('sysHourly').value) || 60;
+            const defaultDaily = parseInt(document.getElementById('sysDaily').value) || 100;
+            document.getElementById('editUid').value = uid; 
+            document.getElementById('editName').value = u.displayName || ''; 
+            document.getElementById('editHourlyLimit').value = u.hourlyLimit !== undefined ? u.hourlyLimit : defaultHourly; 
+            document.getElementById('editDailyLimit').value = u.dailyLimit !== undefined ? u.dailyLimit : defaultDaily; 
+            document.getElementById('editIsAdmin').checked = (u.role === 'admin'); 
+            document.getElementById('editIsBanned').checked = (u.isBanned === true);
             const isSuper = (u.email === 'yal42d@gmail.com'); document.getElementById('editIsAdmin').disabled = isSuper; document.getElementById('editIsBanned').disabled = isSuper;
 
             const regionContainer = document.getElementById('regionCheckboxes'); regionContainer.innerHTML = '';
@@ -933,17 +944,20 @@
         };
         
         window.approveUser = async (uid, name) => {
-            const ans = await window.customConfirm(`${name || 'Bu kullanıcı'} için erişim izni verilsin mi?\n(Limitler: 60/Saat, 100/Gün olarak ayarlanacak)`);
+            const defaultHourly = parseInt(document.getElementById('sysHourly').value) || 60;
+            const defaultDaily = parseInt(document.getElementById('sysDaily').value) || 100;
+
+            const ans = await window.customConfirm(`${name || 'Bu kullanıcı'} için erişim izni verilsin mi?\n(Limitler: ${defaultHourly}/Saat, ${defaultDaily}/Gün olarak ayarlanacak)`);
             if (!ans) return;
             showLoading(true);
             try {
                 await update(ref(db, 'users_v45/' + uid), {
-                    hourlyLimit: 60,
-                    dailyLimit: 100,
+                    hourlyLimit: defaultHourly,
+                    dailyLimit: defaultDaily,
                     isApproved: true,
                     isBanned: false
                 });
-                alert('Kullanıcı onaylandı.'); // İsteğe bağlı, zaten realtime update olur
+                alert('Kullanıcı onaylandı.'); 
             } catch (e) { alert('Hata: ' + e.message); }
             showLoading(false);
         };
@@ -1089,7 +1103,9 @@
                         min_version: minVer,
                         welcome_message: welMsg,
                         latest_version: latestVer,
-                        apk_url: apkUrl
+                        apk_url: apkUrl,
+                        default_daily_limit: document.getElementById('sysDaily').value,
+                        default_hourly_limit: document.getElementById('sysHourly').value
                     })
                 });
                 const result = await res.json();
@@ -1266,6 +1282,8 @@
                 if (config) {
                     document.getElementById('minVersionInput').value = config.force_update_min_version || '';
                     document.getElementById('welcomeMsgInput').value = config.welcome_message || '';
+                    document.getElementById('sysDaily').value = config.default_daily_limit || '100';
+                    document.getElementById('sysHourly').value = config.default_hourly_limit || '60';
                 }
                 
                 const vRes = await fetch('/api/version');
