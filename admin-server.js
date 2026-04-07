@@ -162,8 +162,8 @@ app.post('/api/build-publish', async (req, res) => {
         // 2. Web Build
         const webBuildCmd = `./publish_update.sh`;
         
-        // 3. Android Build
-        const apkBuildCmd = `npx cap sync && cd android && ./gradlew assembleDebug && cp app/build/outputs/apk/debug/app-debug.apk ../updates/KuryePro_v${version}.apk && cd ..`;
+        // 3. Android Build (DİKKAT: Hata olursa clean ekliyoruz tekrar)
+        const apkBuildCmd = `npx cap sync && cd android && ./gradlew clean && ./gradlew assembleDebug && cp app/build/outputs/apk/debug/app-debug.apk ../updates/KuryePro_v${version}.apk && cd ..`;
 
         // 4. GitHub Push
         const gitPushCmd = `git add . && (git commit -m "🚀 Auto-Build: v${version}" || true) && git push origin main`;
@@ -172,19 +172,20 @@ app.post('/api/build-publish', async (req, res) => {
 
         console.log("🛠️ Komutlar çalıştırılıyor, lütfen bekleyin (gradle derlemesi sürebilir)...");
 
-        // maxBuffer'ı artırıyoruz (50MB) çünkü build logları çok uzun olabilir
         exec(fullCommand, { maxBuffer: 1024 * 1024 * 50 }, (error, stdout, stderr) => {
             if (error) {
                 console.error("❌ Hata Oluştu:", error);
+                console.error("STDOUT:", stdout);
+                console.error("STDERR:", stderr);
                 return res.status(500).json({ 
                     success: false, 
                     error: "Derleme veya Push hatası!", 
-                    details: error.message 
+                    details: error.message,
+                    stdout_tail: stdout ? stdout.slice(-1000) : "",
+                    stderr_tail: stderr ? stderr.slice(-1000) : ""
                 });
             }
             console.log("✅ BAŞARIYLA TAMAMLANDI");
-            console.log("📦 APK Oluşturuldu: updates/KuryePro_v" + version + ".apk");
-            console.log("🌐 GitHub'a Gönderildi.");
             res.json({ 
                 success: true, 
                 message: "v" + version + " başarıyla derlendi ve GitHub'a yüklendi!" 
