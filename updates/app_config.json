@@ -2,6 +2,6 @@
     "access_code": "1234",
     "welcome_message": "final",
     "force_update_min_version": "72",
-    "default_daily_limit": "50",
+    "default_daily_limit": "7",
     "default_hourly_limit": "5"
 }
