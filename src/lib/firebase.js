@@ -34,6 +34,17 @@ const db = getDatabase(app);
 
 const LOGIN_REDIRECT_FLAG = 'google_login_redirect_started';
 
+// --- SERVER TIME OFFSET LOGIC ---
+// Kullanıcının telefon saatini değiştirmesine karşı koruma
+let serverTimeOffset = 0;
+onValue(ref(db, ".info/serverTimeOffset"), (snap) => {
+    serverTimeOffset = snap.val() || 0;
+});
+
+function getServerDate() {
+    return new Date(Date.now() + serverTimeOffset);
+}
+
 function cacheUserLocally(user) {
     if (!user) return;
     localStorage.setItem('firebase_uid', user.uid);
@@ -188,7 +199,7 @@ export async function logoutUser() {
 export async function saveUserToDB(user) {
     const userRef = ref(db, 'users_v45/' + user.uid);
     const snapshot = await get(userRef);
-    const now = new Date().toISOString();
+    const now = getServerDate().toISOString();
 
     if (snapshot.exists()) {
         // Mevcut kullanıcı: Sadece profil bilgilerini ve son girişi güncelle
@@ -288,9 +299,10 @@ export async function hasRemainingLimit(uid = null) {
         // Admin override
         if (data.role === 'admin') return { allowed: true, limit: 9999, usage: 0 };
 
-        const now = new Date();
+        const now = getServerDate();
         const today = now.toISOString().split('T')[0];
-        const currentHourStr = today + "-" + now.getHours();
+        const currentHourStr = today + "-" + now.getUTCHours(); // getUTCHours() daha güvenlidir
+
 
         // 1. Günlük Limit Kontrolü
         const dailyLimit = data.dailyLimit === undefined ? 100 : data.dailyLimit;
@@ -321,9 +333,10 @@ export async function incrementLimitUsage(uid = null) {
         const data = snapshot.val();
         if (data.role === 'admin') return true;
 
-        const now = new Date();
+        const now = getServerDate();
         const today = now.toISOString().split('T')[0];
-        const currentHourStr = today + "-" + now.getHours();
+        const currentHourStr = today + "-" + now.getUTCHours();
+
 
         const dailyLimit = data.dailyLimit === undefined ? 100 : data.dailyLimit;
         const hourlyLimit = data.hourlyLimit === undefined ? 60 : data.hourlyLimit;
