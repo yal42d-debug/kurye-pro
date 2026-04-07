@@ -170,8 +170,8 @@ app.post('/api/build-publish', async (req, res) => {
 
         console.log("🛠️ Komutlar çalıştırılıyor, lütfen bekleyin (gradle derlemesi sürebilir)...");
 
-        // maxBuffer'ı artırıyoruz (10MB) çünkü build logları çok uzun olabilir
-        exec(fullCommand, { maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
+        // maxBuffer'ı artırıyoruz (50MB) çünkü build logları çok uzun olabilir
+        exec(fullCommand, { maxBuffer: 1024 * 1024 * 50 }, (error, stdout, stderr) => {
             if (error) {
                 console.error("❌ Hata Oluştu:", error);
                 return res.status(500).json({ 
