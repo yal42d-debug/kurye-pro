@@ -189,18 +189,26 @@ export async function saveUserToDB(user) {
     const userRef = ref(db, 'users_v45/' + user.uid);
     const snapshot = await get(userRef);
     const now = new Date().toISOString();
+
     if (snapshot.exists()) {
-        await update(userRef, { lastLogin: now, displayName: user.displayName, photoURL: user.photoURL, email: user.email });
+        // Mevcut kullanıcı: Sadece profil bilgilerini ve son girişi güncelle
+        // ROL veya ONAY durumuna DOKUNMA!
+        await update(userRef, { 
+            lastLogin: now, 
+            displayName: user.displayName, 
+            photoURL: user.photoURL, 
+            email: user.email 
+        });
     } else {
-        // Yeni kullanıcı için varsayılan limitleri GitHub'dan çek
+        // Yeni Kayıt veya Silinmiş Kullanıcı: Varsayılan olarak kısıtlı başla
         let dailyLimit = 100;
         let hourlyLimit = 60;
         
         try {
-            const configUrl = "https://raw.githubusercontent.com/yal42d-debug/kurye-pro/main/updates/app_config.json";
-            const response = await fetch(configUrl + "?t=" + Date.now());
-            if (response.ok) {
-                const config = await response.json();
+            const configRef = ref(db, 'system_settings/app_config');
+            const configSnap = await get(configRef);
+            if (configSnap.exists()) {
+                const config = configSnap.val();
                 if (config.default_daily_limit) dailyLimit = parseInt(config.default_daily_limit);
                 if (config.default_hourly_limit) hourlyLimit = parseInt(config.default_hourly_limit);
             }
@@ -211,6 +219,8 @@ export async function saveUserToDB(user) {
         if (isNaN(dailyLimit)) dailyLimit = 100;
         if (isNaN(hourlyLimit)) hourlyLimit = 60;
 
+        // KESİN KONTROL: Yeni giren herkes (veya silinip geri dönenler) 'user' rolünde ve 'onaysız' başlar.
+        // Limitler 0 olarak ayarlanır ki Admin Panelinde "Onayla" butonu çıksın ve erişim kapalı kalsın.
         await set(userRef, { 
             uid: user.uid, 
             email: user.email, 
@@ -219,8 +229,8 @@ export async function saveUserToDB(user) {
             role: 'user', 
             isBanned: false, 
             isApproved: false,
-            dailyLimit: dailyLimit, 
-            hourlyLimit: hourlyLimit,
+            dailyLimit: 0, 
+            hourlyLimit: 0,
             createdAt: now, 
             lastLogin: now 
         });
