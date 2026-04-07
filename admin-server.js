@@ -156,8 +156,10 @@ app.post('/api/build-publish', async (req, res) => {
         configData.force_update_min_version = String(version);
         fs.writeFileSync(APP_CONFIG_FILE, JSON.stringify(configData, null, 4));
 
-        // 1. Yetki ver ve 'www' klasörünü temizle (Asset kirliliğini önlemek - Sync hızlanır)
-        const permissionCmd = `rm -rf www && mkdir www && chmod +x ./publish_update.sh && chmod +x ./android/gradlew`;
+        // 1. Yetki ver, Asset ve Çakışan dosyaları temizle (iCloud/Dropbox çakışmalarını çözer)
+        // Sadece android, node_modules ve src klasörlerinde arayarak hızlandırıyoruz
+        const cleanupDuplicates = `find android node_modules src -name "* [2-9].*" -o -name "* (1).*" -exec rm -rf {} + 2>/dev/null || true`;
+        const permissionCmd = `${cleanupDuplicates} && rm -rf www && mkdir www && chmod +x ./publish_update.sh && chmod +x ./android/gradlew`;
         
         // 2. Web Build
         const webBuildCmd = `./publish_update.sh`;
