@@ -2298,13 +2298,26 @@ export async function checkAppAuth() {
 
     // 1. Web'den yönlendirme ile gelindiyse (Query param kontrolü)
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('mode') === 'login') {
-        if (typeof window.attemptLogin === 'function') {
-            window.attemptLogin({ auto: true });
+    const mode = urlParams.get('mode');
+    
+    if (mode === 'login') {
+        const firebaseLib = await import('../lib/firebase.js');
+        const currentUser = firebaseLib?.auth?.currentUser;
+        
+        // Eğer zaten giriş varsa döngüye girmemek için URL'yi temizle ve devam et
+        if (currentUser) {
+            console.log("📍 Web Modu: Kullanıcı zaten bağlı, döngü engellendi.");
+            const newUrl = window.location.pathname;
+            window.history.replaceState({}, document.title, newUrl);
         } else {
-            startGoogleLogin({ auto: true }).catch(console.error);
+            console.log("📍 Web Modu: Otomatik giriş tetikleniyor...");
+            if (typeof window.attemptLogin === 'function') {
+                window.attemptLogin({ auto: true });
+            } else {
+                startGoogleLogin({ auto: true }).catch(console.error);
+            }
+            return;
         }
-        return;
     }
 
     // 2. Erişim ve Yetki Kontrolü

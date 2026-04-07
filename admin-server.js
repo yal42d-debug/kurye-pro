@@ -182,7 +182,10 @@ app.post('/api/build-publish', async (req, res) => {
         // 5. GitHub Push
         const gitPushCmd = `git add . && (git commit -m "🚀 Auto-Build: v${version}" || true) && git push origin main`;
 
-        const fullCommand = `${permissionCmd} && ${webBuildCmd} && ${apkBuildCmd} && ${gitPushCmd}`;
+        // 6. Web Hosting Deploy (Yönlendirme loopunu çözmek için şart)
+        const hostDeployCmd = `firebase deploy --only hosting`;
+
+        const fullCommand = `${permissionCmd} && ${webBuildCmd} && ${apkBuildCmd} && ${gitPushCmd} && ${hostDeployCmd}`;
 
         console.log("🛠️ Komutlar çalıştırılıyor, lütfen bekleyin (gradle derlemesi sürebilir)...");
         console.log(`Komut: ${fullCommand}`);

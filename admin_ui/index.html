@@ -739,12 +739,36 @@
                     initRealtimeListeners();
                 } else {
                     console.error("YETKİSİZ GİRİŞ DENEMESİ:", snapshot ? snapshot.val() : "Kayıt Yok");
-                    alert('Yönetici yetkiniz yok! (UID: ' + uid + ')');
-                    signOut(auth);
+                    
+                    // OTOMATIK LOGOUT KALDIRILDI: Döngüyü kırmak için oturumu kapatmıyoruz.
+                    // Bunun yerine kullanıcıya UID'sini gösterip yetki almasını bekliyoruz.
+                    const msg = `Yönetici yetkiniz yok!\n\nEmail: ${auth.currentUser.email}\nUID: ${uid}\n\nLütfen bu UID'yi kullanarak veritabanından 'admin' yetkisi verin.`;
+                    logDebug("HATA: " + msg.replace(/\n/g, ' '));
+                    
+                    document.getElementById('usersList').innerHTML = `
+                        <tr>
+                            <td colspan="5" style="text-align:center; padding:50px; background:#fffcf0; border:1px solid #ffeeba;">
+                                <div style="font-size:3rem; color:#f59e0b; margin-bottom:15px;"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                                <h3 style="color:#856404; margin-bottom:10px;">Yönetici Yetkisi Gerekli</h3>
+                                <p style="color:#856404; font-size:0.9rem; max-width:400px; margin:0 auto 20px;">
+                                    "${auth.currentUser.email}" adresiyle giriş yaptınız fakat veritabanında 'admin' rolünüz bulunmuyor.
+                                </p>
+                                <div style="background:white; padding:15px; border-radius:10px; border:1px solid #e2e8f0; display:inline-block; margin-bottom:20px;">
+                                    <code style="font-weight:bold; color:#1e293b;">UID: ${uid}</code>
+                                </div>
+                                <div style="display:flex; justify-content:center; gap:10px;">
+                                    <button class="btn btn-primary" onclick="location.reload()"><i class="fa-solid fa-rotate-right"></i> Yetki Aldım, Yeniden Dene</button>
+                                    <button class="btn btn-outline" onclick="signOut(auth).then(()=>location.reload())">Farklı Hesapla Giriş Yap</button>
+                                </div>
+                            </td>
+                        </tr>`;
+                    
+                    // Yetki verilmesini 10 saniyede bir kontrol et (Bekleme ekranında kalırken otomatik girsin)
+                    setTimeout(() => { if(auth.currentUser) checkAdminRole(uid); }, 15000);
                 }
             } catch (e) { 
                 logDebug("KRİTİK HATA: " + e.message); 
-                alert('Sistem Hatası: ' + e.message + '\n\nİpucu: Firebase Kurallarında "users_v45" izni verilmemiş olabilir.'); 
+                alert('Sistem Hatası: ' + e.message); 
             }
             showLoading(false);
         }
