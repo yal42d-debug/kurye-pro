@@ -132,7 +132,14 @@ export async function loginWithGoogle(options = {}) {
         }
     } catch (error) {
         console.error("Login Error:", error);
+        
+        // Sonsuz döngü engelleme: Eğer zaten tarayıcı yönlendirmesi denendiyse dur.
+        if (sessionStorage.getItem('login_attempted')) {
+             return { success: false, error: "Giriş başarısız. Lütfen internetinizi ve sürümünüzü kontrol edin." };
+        }
+        
         if (Capacitor.isNativePlatform()) {
+            sessionStorage.setItem('login_attempted', 'true');
             await Browser.open({ url: 'https://kuryeprov44.web.app/?mode=login', presentationStyle: 'popover' });
             return { type: 'external_browser', error: String(error) };
         }
@@ -170,7 +177,19 @@ async function saveUserToDB(user) {
     if (snapshot.exists()) {
         await update(userRef, { lastLogin: now, displayName: user.displayName, photoURL: user.photoURL, email: user.email });
     } else {
-        await set(userRef, { uid: user.uid, email: user.email, displayName: user.displayName, photoURL: user.photoURL, role: 'user', isBanned: false, dailyLimit: 100, createdAt: now, lastLogin: now });
+        await set(userRef, { 
+            uid: user.uid, 
+            email: user.email, 
+            displayName: user.displayName, 
+            photoURL: user.photoURL, 
+            role: 'user', 
+            isBanned: false, 
+            isApproved: false,
+            dailyLimit: 0, 
+            hourlyLimit: 0,
+            createdAt: now, 
+            lastLogin: now 
+        });
     }
     localStorage.setItem('firebase_uid', user.uid);
 }
