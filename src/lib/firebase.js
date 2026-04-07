@@ -82,26 +82,35 @@ if (Capacitor.isNativePlatform()) {
 
 // Native Sign-In Implementation
 async function signInWithGoogleNative() {
-    const result = await FirebaseAuthentication.signInWithGoogle();
-    if (!result || !result.user) throw new Error("Native Google sign-in başarısız.");
+    try {
+        const result = await FirebaseAuthentication.signInWithGoogle();
+        if (!result || !result.user) return { success: false, error: "Giriş iptal edildi veya başarısız." };
 
-    let user = result.user;
-    const idToken = result.credential?.idToken;
-    const accessToken = result.credential?.accessToken;
+        let user = result.user;
+        const idToken = result.credential?.idToken;
+        const accessToken = result.credential?.accessToken;
 
-    if (idToken || accessToken) {
-        try {
-            const credential = GoogleAuthProvider.credential(idToken || undefined, accessToken || undefined);
-            const authResult = await signInWithCredential(auth, credential);
-            if (authResult?.user) user = authResult.user;
-        } catch (err) {
-            console.warn("JS SDK oturumu açılamadı, native kullanıcı ile devam ediliyor.", err);
+        if (idToken || accessToken) {
+            try {
+                const credential = GoogleAuthProvider.credential(idToken || undefined, accessToken || undefined);
+                const authResult = await signInWithCredential(auth, credential);
+                if (authResult?.user) user = authResult.user;
+            } catch (err) {
+                console.warn("JS SDK oturumu açılamadı, native kullanıcı ile devam ediliyor.", err);
+            }
         }
-    }
 
-    await saveUserToDB(user);
-    cacheUserLocally(user);
-    return { success: true, user };
+        await saveUserToDB(user);
+        cacheUserLocally(user);
+        return { success: true, user };
+    } catch (err) {
+        console.error("Native Google Login Error:", err);
+        let msg = "Native giriş hatası: " + (err.message || String(err));
+        if (String(err).includes("10") || String(err).includes("DEVELOPER_ERROR")) {
+            msg = "GİRİŞ HATASI (10): SHA-1 anahtarı Firebase'de kayıtlı değil veya paket ismi hatalı.";
+        }
+        return { success: false, error: msg };
+    }
 }
 
 export async function loginWithGoogle(options = {}) {
@@ -133,20 +142,8 @@ export async function loginWithGoogle(options = {}) {
     } catch (error) {
         console.error("Login Error:", error);
         
-        const loginAttemptedRecently = sessionStorage.getItem('login_attempted_at');
-        const now = Date.now();
-        
-        // 1. Eğer 30 saniye içinde zaten yönlendirme yapıldıysa döngüyü kır
-        if (loginAttemptedRecently && (now - parseInt(loginAttemptedRecently)) < 30000) {
-             return { success: false, error: "Giriş işlemi devam ediyor veya başarısız oldu. Lütfen uygulamayı kapatıp açın." };
-        }
-        
-        // 2. Native cihazda hata alındıysa web popup'a yönlendir (Sadece ilk hatada)
-        if (Capacitor.isNativePlatform()) {
-            sessionStorage.setItem('login_attempted_at', now.toString());
-            await Browser.open({ url: 'https://kuryeprov44.web.app/?mode=login', presentationStyle: 'popover' });
-            return { type: 'external_browser', error: String(error) };
-        }
+        // Native platformda hata alındığında artık tarayıcıya yönlendirme yapmıyoruz (User Request)
+        // Bunun yerine hatayı döndürüp UI'da gösterilmesini sağlıyoruz.
         return { success: false, error: error?.message || String(error) };
     }
 }
@@ -174,7 +171,7 @@ export async function logoutUser() {
     localStorage.removeItem('user_email');
 }
 
-async function saveUserToDB(user) {
+export async function saveUserToDB(user) {
     const userRef = ref(db, 'users_v45/' + user.uid);
     const snapshot = await get(userRef);
     const now = new Date().toISOString();

@@ -4,4 +4,7 @@
     <string name="title_activity_main">KuryePro</string>
     <string name="package_name">com.kurye.pro</string>
     <string name="custom_url_scheme">com.kurye.pro</string>
+    <!-- Google Auth Client ID (Web Client ID preferred for backend exchange) -->
+    <string name="google_provider_client_id">177653241936-9lo3c73i84lvea0g18bek17avaav4881.apps.googleusercontent.com</string>
+    <!-- NOT: Hata 10 (DEVELOPER_ERROR) alınıyorsa, Firebase Console'da Android uygulamanızın SHA-1 anahtarının (debug ve release) ekli olduğundan emin olun. -->
 </resources>

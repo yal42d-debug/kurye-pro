@@ -1,5 +1,5 @@
 
-import { loginWithGoogle, handleRedirectResult, checkUserStatus, logoutUser, auth } from './firebase';
+import { loginWithGoogle, handleRedirectResult, checkUserStatus, logoutUser, auth, saveUserToDB } from './firebase';
 
 // Mevcut şifreli veri adresi
 const REPO_USER = 'yal42d-debug';
@@ -27,12 +27,20 @@ export async function checkAccess() {
             unsubscribe();
 
             if (user) {
-                const status = await checkUserStatus(user.uid);
+                let status = await checkUserStatus(user.uid);
+                
+                // KURTARMA MANTIĞI: Eğer auth var ama DB kaydı yoksa (silinmişse), otomatik kurtar
+                if (status.status === 'record_missing') {
+                    console.log("📍 Kayıt bulunamadı, otomatik kurtarma başlatılıyor...");
+                    await saveUserToDB(user);
+                    status = await checkUserStatus(user.uid); // Tekrar kontrol et
+                }
+
                 if (status.allowed) {
                     resolve({ allowed: true, user: status.data, status: 'authorized' });
                 } else {
                     // OTOMATİK LOGOUT KALDIRILDI: Döngüyü kırmak için oturumu kapatmıyoruz, 
-                    // sadece erişimi reddediyoruz. UI bu durumu 'banned' veya 'not_found' olarak işleyecek.
+                    // sadece erişimi reddediyoruz. UI bu durumu 'banned' veya 'not_approved' olarak işleyecek.
                     resolve({ allowed: false, reason: status.reason, status: status.status || 'denied' });
                 }
             } else {
