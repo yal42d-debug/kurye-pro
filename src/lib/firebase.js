@@ -133,13 +133,17 @@ export async function loginWithGoogle(options = {}) {
     } catch (error) {
         console.error("Login Error:", error);
         
-        // Sonsuz döngü engelleme: Eğer zaten tarayıcı yönlendirmesi denendiyse dur.
-        if (sessionStorage.getItem('login_attempted')) {
-             return { success: false, error: "Giriş başarısız. Lütfen internetinizi ve sürümünüzü kontrol edin." };
+        const loginAttemptedRecently = sessionStorage.getItem('login_attempted_at');
+        const now = Date.now();
+        
+        // 1. Eğer 30 saniye içinde zaten yönlendirme yapıldıysa döngüyü kır
+        if (loginAttemptedRecently && (now - parseInt(loginAttemptedRecently)) < 30000) {
+             return { success: false, error: "Giriş işlemi devam ediyor veya başarısız oldu. Lütfen uygulamayı kapatıp açın." };
         }
         
+        // 2. Native cihazda hata alındıysa web popup'a yönlendir (Sadece ilk hatada)
         if (Capacitor.isNativePlatform()) {
-            sessionStorage.setItem('login_attempted', 'true');
+            sessionStorage.setItem('login_attempted_at', now.toString());
             await Browser.open({ url: 'https://kuryeprov44.web.app/?mode=login', presentationStyle: 'popover' });
             return { type: 'external_browser', error: String(error) };
         }
@@ -215,15 +219,25 @@ export async function checkUserStatus(uid) {
     if (!storedUid) return { allowed: false, reason: "Giriş yapılmamış.", status: 'login_required' };
 
     try {
-        const snapshot = await get(ref(db, 'users_v45/' + storedUid));
+        const userRef = ref(db, 'users_v45/' + storedUid);
+        const snapshot = await get(userRef);
+        
         if (snapshot.exists()) {
             const data = snapshot.val();
             if (data.isBanned) return { allowed: false, reason: "HESABINIZ YASAKLANMIŞTIR.", status: 'banned' };
-            return { allowed: true, data: data };
+            // Admin veya Onaylı kullanıcı
+            if (data.role === 'admin' || data.isApproved === true) {
+                return { allowed: true, data: data, status: 'authorized' };
+            } else {
+                return { allowed: false, reason: "Hesabınız henüz onaylanmadı. Lütfen yöneticinizle iletişime geçin.", status: 'not_approved' };
+            }
         }
-        return { allowed: false, reason: "Kullanıcı kaydı bulunamadı.", status: 'login_required' };
+        
+        // Kayıt yoksa: Yeni kullanıcı veya silinmiş kayıt
+        return { allowed: false, reason: "Kullanıcı kaydı veritabanında aktif değil.", status: 'record_missing' };
     } catch (err) {
-        return { allowed: false, reason: "Sunucu hatası." };
+        console.error("Status check failed", err);
+        return { allowed: false, reason: "Veritabanına ulaşılamıyor.", status: 'network_error' };
     }
 }
 

@@ -10,19 +10,18 @@ const BASE_URL = `https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/ma
 export async function checkAccess() {
     await handleRedirectResult();
 
-    // Önce localStorage'dan kontrol et (Deep link ile giriş yapıldıysa)
+    // 1. Önce LocalStorage'dan UID Kontrolü (Hızlı Kontrol)
     const storedUid = localStorage.getItem('firebase_uid');
     if (storedUid) {
         const status = await checkUserStatus(storedUid);
         if (status.allowed) {
             return { allowed: true, user: status.data, status: 'authorized' };
         } else if (status.status === 'banned') {
-            await logoutUser();
             return { allowed: false, reason: status.reason, status: 'banned' };
         }
     }
 
-    // Firebase Auth Durumunu da kontrol et
+    // 2. Firebase Auth Durumunu Dinle ve Veritabanı ile Karşılaştır
     return new Promise((resolve) => {
         const unsubscribe = auth.onAuthStateChanged(async (user) => {
             unsubscribe();
@@ -32,8 +31,9 @@ export async function checkAccess() {
                 if (status.allowed) {
                     resolve({ allowed: true, user: status.data, status: 'authorized' });
                 } else {
-                    await logoutUser();
-                    resolve({ allowed: false, reason: status.reason, status: status.status });
+                    // OTOMATİK LOGOUT KALDIRILDI: Döngüyü kırmak için oturumu kapatmıyoruz, 
+                    // sadece erişimi reddediyoruz. UI bu durumu 'banned' veya 'not_found' olarak işleyecek.
+                    resolve({ allowed: false, reason: status.reason, status: status.status || 'denied' });
                 }
             } else {
                 resolve({ allowed: false, reason: "Giriş Yapılmalı", status: 'login_required' });

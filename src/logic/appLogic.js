@@ -2290,8 +2290,13 @@ window.logoutUserApp = async function() {
 // Uygulama Başlangıcında Kontrol
 export async function checkAppAuth() {
     const infoText = document.getElementById('deviceInfoText');
-    if (infoText) infoText.innerText = "Yükleniyor...";
+    const overlay = document.getElementById('loginOverlay');
+    const loginTitle = document.getElementById('loginTitle');
+    const loginBtn = document.getElementById('btnLoginBtn');
 
+    if (infoText) infoText.innerText = "Sistem kontrol ediliyor...";
+
+    // 1. Web'den yönlendirme ile gelindiyse (Query param kontrolü)
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('mode') === 'login') {
         if (typeof window.attemptLogin === 'function') {
@@ -2302,28 +2307,46 @@ export async function checkAppAuth() {
         return;
     }
 
+    // 2. Erişim ve Yetki Kontrolü
     const status = await checkAccess();
 
-    const overlay = document.getElementById('loginOverlay');
-
     if (status.status === 'authorized') {
-        // GİRİŞ VAR -> Overlay'i Kaldır
+        // --- YETKİLİ GİRİŞ ---
         if (overlay) {
             overlay.classList.add('transition-opacity', 'duration-500', 'opacity-0');
             setTimeout(() => {
                 overlay.classList.add('hidden');
                 overlay.style.opacity = '1';
+                if (loginTitle) loginTitle.innerText = "GİRİŞ BAŞARILI";
             }, 500);
         }
     } else {
-        // GİRİŞ YOK -> Overlay Kalsın
-        if (infoText) infoText.innerText = "Güvenli Giriş v4.2";
+        // --- YETKİSİZ VEYA GİRİŞ YOK ---
+        if (overlay) {
+            overlay.classList.remove('hidden');
+            overlay.style.opacity = '1';
+        }
 
         if (status.status === 'banned') {
-            document.getElementById('loginTitle').innerText = "HESAP YASAKLANDI";
-            document.getElementById('loginTitle').classList.add('text-red-500');
-            document.getElementById('btnLoginBtn').style.display = 'none';
-            if (infoText) infoText.innerText = "Yönetici ile iletişime geçin.";
+            if (loginTitle) { loginTitle.innerText = "HESAP YASAKLANDI"; loginTitle.style.color = "#ef4444"; }
+            if (loginBtn) loginBtn.style.display = 'none';
+            if (infoText) infoText.innerText = "Güvenlik nedeniyle erişiminiz engellendi.";
+        } 
+        else if (status.status === 'not_approved') {
+            if (loginTitle) { loginTitle.innerText = "ONAY BEKLENİYOR"; loginTitle.style.color = "#fbbf24"; }
+            if (loginBtn) loginBtn.style.display = 'none';
+            if (infoText) (infoText.innerText = "Hesabınız henüz onaylanmadı. Panelden onay verin.");
+        }
+        else if (status.status === 'record_missing') {
+            if (loginTitle) { loginTitle.innerText = "KAYIT BULUNAMADI"; loginTitle.style.color = "#94a3b8"; }
+            if (infoText) infoText.innerText = "Hesabınız silinmiş olabilir. Lütfen tekrar giriş yapın.";
+            if (loginBtn) loginBtn.style.display = 'flex';
+        }
+        else {
+            // Normal Giriş Bekleme
+            if (loginTitle) { loginTitle.innerText = "KURYE PRO"; loginTitle.style.color = ""; }
+            if (infoText) infoText.innerText = "Devam etmek için giriş yapın.";
+            if (loginBtn) loginBtn.style.display = 'flex';
         }
     }
 }
