@@ -163,7 +163,7 @@ app.post('/api/build-publish', async (req, res) => {
         const webBuildCmd = `./publish_update.sh`;
         
         // 3. Android Build
-        const apkBuildCmd = `npx cap sync && cd android && ./gradlew clean && ./gradlew assembleDebug && cp app/build/outputs/apk/debug/app-debug.apk ../updates/KuryePro_v${version}.apk && cd ..`;
+        const apkBuildCmd = `npx cap sync && cd android && ./gradlew assembleDebug && cp app/build/outputs/apk/debug/app-debug.apk ../updates/KuryePro_v${version}.apk && cd ..`;
 
         // 4. GitHub Push
         const gitPushCmd = `git add . && (git commit -m "🚀 Auto-Build: v${version}" || true) && git push origin main`;
