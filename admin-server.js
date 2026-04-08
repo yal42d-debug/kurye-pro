@@ -38,8 +38,13 @@ function versionToCode(v) {
     // SemVer 1.0.88 -> 10088 (versionCode için tam sayı)
     if (!v.includes('.')) return parseInt(v) || 0;
     const parts = v.split('.');
-    return (parseInt(parts[0]) * 10000) + (parseInt(parts[1]) * 100) + parseInt(parts[2]);
+    let major = parseInt(parts[0]);
+    // RESET DESTEĞİ: Teknik numaranın her zaman artmasını sağlamak için 
+    // App.jsx'teki aynı mantığı (offset) buraya da ekliyoruz.
+    if (major < 50) major += 1000;
+    return (major * 10000) + (parseInt(parts[1]) * 100) + parseInt(parts[2]);
 }
+
 
 
 // 1. Cihazları Getir
