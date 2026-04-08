@@ -37,24 +37,38 @@ function App() {
         const repoUser = 'yal42d-debug';
         const repoName = 'kurye-pro';
         const branch = 'main';
+
+        const parseVer = (v) => {
+          if (!v) return 0;
+          const s = String(v);
+          if (!s.includes('.')) return parseInt(s);
+          const p = s.split('.');
+          // SemVer'i karşılaştırılabilir bir sayıya çevir (Örn: 1.0.92 -> 10092)
+          // Eğer major 1 ise ve eski sürüm 88 ise, çakışmayı önlemek için major'a büyük bir offset ekleyebiliriz
+          // veya kullanıcıya sürümü 89.0.0'dan başlatmasını önerebiliriz.
+          // Şimdilik standart dönüşüm yapıyoruz:
+          return (parseInt(p[0]) * 1000000) + (parseInt(p[1]) * 1000) + parseInt(p[2]);
+        };
         
         // Fetch Version Info
         const versionUrl = `https://raw.githubusercontent.com/${repoUser}/${repoName}/${branch}/updates/version.json?t=${Date.now()}`;
         const res = await fetch(versionUrl, { cache: 'no-store' });
         if (!res.ok) return;
         const data = await res.json();
-        const serverVersion = parseInt(data.version || "0");
-        const localVersion = APP_VERSION_CODE;
+        
+        const serverVersion = data.version || "0";
+        const serverCode = parseVer(serverVersion);
+        const localCode = parseVer(APP_VERSION_CODE);
 
         // Fetch App Config (Forced Update Check)
         const configUrl = `https://raw.githubusercontent.com/${repoUser}/${repoName}/${branch}/updates/app_config.json?t=${Date.now()}`;
         const configReq = await fetch(configUrl, { cache: 'no-store' });
         if (configReq.ok) {
           const configData = await configReq.json();
-          // min_version or force_update_min_version
-          const minAllowed = parseInt(configData.force_update_min_version || configData.min_version || "0");
+          const minAllowedVer = configData.force_update_min_version || configData.min_version || "0";
+          const minAllowedCode = parseVer(minAllowedVer);
 
-          if (localVersion < minAllowed) {
+          if (localCode < minAllowedCode) {
             console.warn("BLOCKED: Your version is too old.");
             setUpdateAvailable({
               forced: true,
@@ -72,7 +86,7 @@ function App() {
         }
 
         // Normal Update Check
-        if (serverVersion > localVersion) {
+        if (serverCode > localCode) {
           setUpdateAvailable({
             forced: false,
             version: serverVersion,
@@ -83,6 +97,7 @@ function App() {
         console.warn('Update check failed', err);
       }
     };
+
 
     // Hemen kontrol et, bekleme yapma
     checkVersion(); 
