@@ -43,12 +43,14 @@ function App() {
           const s = String(v);
           if (!s.includes('.')) return parseInt(s);
           const p = s.split('.');
-          // SemVer'i karşılaştırılabilir bir sayıya çevir (Örn: 1.0.92 -> 10092)
-          // Eğer major 1 ise ve eski sürüm 88 ise, çakışmayı önlemek için major'a büyük bir offset ekleyebiliriz
-          // veya kullanıcıya sürümü 89.0.0'dan başlatmasını önerebiliriz.
-          // Şimdilik standart dönüşüm yapıyoruz:
-          return (parseInt(p[0]) * 1000000) + (parseInt(p[1]) * 1000) + parseInt(p[2]);
+          let major = parseInt(p[0]);
+          // RESET DESTEĞİ: Eğer sürüm 1.x.x gibi küçük bir sayıdan başlıyorsa
+          // ama biz v88-93 gibi büyük sayılardan geldiysek, bunu en güncel sürüm sayması için
+          // teknik olarak major değerine büyük bir offset ekliyoruz.
+          if (major < 50) major += 1000; 
+          return (major * 1000000) + (parseInt(p[1]) * 1000) + parseInt(p[2]);
         };
+
         
         // Fetch Version Info
         const versionUrl = `https://raw.githubusercontent.com/${repoUser}/${repoName}/${branch}/updates/version.json?t=${Date.now()}`;
