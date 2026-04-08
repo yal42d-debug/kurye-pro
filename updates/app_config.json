@@ -1,6 +1,6 @@
 {
     "access_code": "1234",
-    "welcome_message": "1.0",
+    "welcome_message": "1.0.0",
     "force_update_min_version": "1.0.0",
     "default_daily_limit": "7",
     "default_hourly_limit": "5"

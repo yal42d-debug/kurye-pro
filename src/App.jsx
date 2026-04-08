@@ -10,7 +10,7 @@ function App() {
   const [updateAvailable, setUpdateAvailable] = useState(null);
 
   // Artık sürüm version.txt'den otomatik okunuyor.
-  const APP_VERSION_CODE = parseInt(typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : "47"); 
+  const APP_VERSION_CODE = (typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : "47"); 
   
   useEffect(() => {
     // --- APP VERSION SETTINGS ---
