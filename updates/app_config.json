@@ -1,7 +1,7 @@
 {
     "access_code": "1234",
     "welcome_message": "93",
-    "force_update_min_version": "93.0.0",
+    "force_update_min_version": "93.0.00",
     "default_daily_limit": "7",
     "default_hourly_limit": "5"
 }
