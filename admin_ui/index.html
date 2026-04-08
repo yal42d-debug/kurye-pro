@@ -577,14 +577,16 @@
                             <div style="display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 20px; margin-bottom: 20px;">
                                 <div class="form-group">
                                     <label class="form-label">Zorunlu Güncelleme Sınırı</label>
-                                    <input type="number" class="form-input" id="minVersionInput" placeholder="Örn: 50">
+                                    <input type="text" class="form-input" id="minVersionInput" placeholder="Örn: 1.0.88">
                                     <div class="form-helper">Bu sürümün altındakiler bloklanır.</div>
                                 </div>
+
                                 <div class="form-group">
                                     <label class="form-label">Yayınlanan En Son Sürüm</label>
-                                    <input type="number" class="form-input" id="latestVersionInput" placeholder="Örn: 52">
+                                    <input type="text" class="form-input" id="latestVersionInput" placeholder="Örn: 1.0.89">
                                     <div class="form-helper">İndirilecek olan sürümdür.</div>
                                 </div>
+
                                 <div class="form-group">
                                     <label class="form-label">Giriş / Karşılama Duyurusu</label>
                                     <input type="text" class="form-input" id="welcomeMsgInput" placeholder="Sisteme Hoşgeldiniz mesajı...">
@@ -1347,13 +1349,25 @@
                 const vRes = await fetch('/api/version');
                 const vData = await vRes.json();
                 if (vData && vData.version) {
-                    const currentVer = vData.version;
-                    // Sadece mevcut sürümü göster (Otomatik artırma kaldırıldı)
-                    document.getElementById('latestVersionInput').value = currentVer;
-                    document.getElementById('apkUrlInput').value = vData.url || `https://raw.githubusercontent.com/yal42d-debug/kurye-pro/main/updates/KuryePro_v${currentVer}.apk`;
+                    const currentVer = String(vData.version);
+                    
+                    // OTOMATİK SÜRÜM ARTIRMA MANTIĞI (Örn: 1.1.1 veya v88)
+                    const nextVer = (v) => {
+                        if (!v.includes('.')) return `1.0.${parseInt(v) + 1}`;
+                        const p = v.split('.');
+                        if (p.length === 3) { p[2] = parseInt(p[2]) + 1; return p.join('.'); }
+                        return v;
+                    };
+
+                    const suggestedVer = nextVer(currentVer);
+                    document.getElementById('latestVersionInput').value = suggestedVer;
+                    document.getElementById('apkUrlInput').value = `https://raw.githubusercontent.com/yal42d-debug/kurye-pro/main/updates/KuryePro_v${suggestedVer}.apk`;
+                    
+                    logDebug(`Sürüm Yüklendi: ${currentVer} -> Önerilen: ${suggestedVer}`);
                 }
             } catch (e) { console.error("Ayarlar yüklenemedi:", e); }
         };
+
 
         // Sekme Değiştirme ve Otomatik Yenileme
         window.switchTab = (tab) => {

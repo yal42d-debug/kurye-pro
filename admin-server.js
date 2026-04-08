@@ -20,6 +20,28 @@ const APP_CONFIG_FILE = path.join(process.cwd(), 'updates', 'app_config.json');
 const VERSION_FILE = path.join(process.cwd(), 'updates', 'version.json');
 const VERSION_TEXT_FILE = path.join(process.cwd(), 'version.txt');
 
+// --- YENİ: Sürümleme Yardımcıları ---
+function incrementVersion(current) {
+    // Eğer v88 gibi düz bir sayısa 1.0.88'e çevir ve artır
+    if (!current.includes('.')) {
+        return `1.0.${parseInt(current) + 1}`;
+    }
+    const parts = current.split('.');
+    if (parts.length === 3) {
+        parts[2] = parseInt(parts[2]) + 1;
+        return parts.join('.');
+    }
+    return current; // Fallback
+}
+
+function versionToCode(v) {
+    // SemVer 1.0.88 -> 10088 (versionCode için tam sayı)
+    if (!v.includes('.')) return parseInt(v) || 0;
+    const parts = v.split('.');
+    return (parseInt(parts[0]) * 10000) + (parseInt(parts[1]) * 100) + parseInt(parts[2]);
+}
+
+
 // 1. Cihazları Getir
 app.get('/api/devices', (req, res) => {
     try {
@@ -166,18 +188,22 @@ app.post('/api/build-publish', async (req, res) => {
         
         // 3. Android Version Update (Bunu JS tarafında yapıyoruz)
         try {
+            const vCode = versionToCode(String(version));
             const gradlePath = path.join(process.cwd(), 'android', 'app', 'build.gradle');
             let content = fs.readFileSync(gradlePath, 'utf8');
-            content = content.replace(/versionCode \d+/, `versionCode ${version}`);
+            content = content.replace(/versionCode \d+/, `versionCode ${vCode}`);
             content = content.replace(/versionName "[^"]+"/, `versionName "v${version}"`);
             fs.writeFileSync(gradlePath, content);
-            console.log(`✅ Build.gradle güncellendi: v${version}`);
+            console.log(`✅ Build.gradle güncellendi: v${version} (Code: ${vCode})`);
         } catch (e) {
             console.warn("⚠️ build.gradle güncellenemedi, işleme devam ediliyor...");
         }
 
         // 4. Android Build (Hızlandırmak için 'clean' kaldırıldı, sadece sync ve build)
-        const apkBuildCmd = `npx cap sync android && cd android && ./gradlew assembleDebug && cp app/build/outputs/apk/debug/app-debug.apk ../updates/KuryePro_v${version}.apk && cd ..`;
+        // YENİ: Önce eski APK'ları temizle (diskten ve git'ten)
+        const cleanupOldApks = `git rm updates/KuryePro_v*.apk 2>/dev/null || true && rm -rf updates/KuryePro_v*.apk updates/dist*.zip 2>/dev/null || true`;
+        const apkBuildCmd = `${cleanupOldApks} && npx cap sync android && cd android && ./gradlew assembleDebug && cp app/build/outputs/apk/debug/app-debug.apk ../updates/KuryePro_v${version}.apk && cd ..`;
+
 
         // 5. GitHub Push
         const gitPushCmd = `git add . && (git commit -m "🚀 Auto-Build: v${version}" || true) && git push origin main`;
